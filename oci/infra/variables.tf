@@ -8,3 +8,8 @@ variable "compartment_ocid" {
   type    = string
 }
 
+variable "allowed_ip_address" {
+  default = []
+  type = list(string)
+  sensitive = true
+}
