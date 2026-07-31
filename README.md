@@ -88,6 +88,36 @@ load balancer detach races with the Hetzner CCM, the upstream
 `scripts/destroy.sh` in the kube-hetzner repo handles that retry and prints an
 orphan report.
 
+### Development
+
+Formatting, validation, linting, and a security scan run via
+[pre-commit](https://pre-commit.com) on every commit:
+
+```bash
+pre-commit install
+```
+
+`terraform_fmt` and `terraform_validate` use whatever is already on `PATH`
+(`tofu` and `terraform` both are). `terraform_tflint` and `terraform_trivy`
+need their own binaries, not installed by pre-commit itself:
+
+```bash
+nix-env -iA nixpkgs.tflint nixpkgs.trivy
+```
+
+If you manage packages declaratively via home-manager, add `pkgs.tflint` and
+`pkgs.trivy` to `home.packages` there instead — the command above is the
+quick path.
+
+Run against everything once, before the first real commit:
+
+```bash
+pre-commit run --all-files
+```
+
+`terraform_validate` does a real `tofu init` on first run — it needs network
+access and is the slowest hook. Later runs reuse the cached `.terraform/`.
+
 ### Operational notes
 
 - **State is local and unencrypted.** It contains the Tailscale auth key, the
