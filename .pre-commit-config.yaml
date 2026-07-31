@@ -25,4 +25,10 @@ repos:
       - id: terraform_tflint
 
       # Requires trivy on PATH — not installed by this hook. See README.
+      # trivy conf scans the whole directory, not just our .tf files, so
+      # without --skip-dirs it also flags the downloaded copy of the
+      # kube-hetzner module's Kubernetes manifests under .terraform/ — code
+      # we don't own and can't fix, gitignored but present on disk post-init.
       - id: terraform_trivy
+        args:
+          - --args=--skip-dirs=**/.terraform
