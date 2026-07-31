@@ -44,6 +44,14 @@ openclaw/hermes) plus dev experimentation. No persistent data.
 Explicitly excluded: Tailscale, NAT router, cluster-autoscaler, multi-location
 spread, IPv6 LB, second Hetzner network, Longhorn, cert-manager, External Secrets.
 
+**Resource headroom note:** 4 GB RAM per node is tight once kube-prometheus,
+Grafana, ArgoCD, and the operator's apps are running. The design accepts this
+because (a) the user's stated workload is light, (b) bumping to `cx33` is a
+straightforward in-place resize on Hetzner if pressure shows up, and (c) most
+planned apps are not memory-hungry. Memory usage should be watched in
+Grafana; if the cluster regularly sits above ~80% memory, resize the
+control-plane nodepool to `cx33` rather than introducing workers.
+
 ### Distribution & lifecycle
 
 - `kubernetes_distribution = "k3s"` (module default)
@@ -59,7 +67,9 @@ spread, IPv6 LB, second Hetzner network, Longhorn, cert-manager, External Secret
 - Packer image: existing `packer/hcloud-leapmicro-snapshots.pkr.hcl` (x86 only),
   snapshots live in `fsn1`. ARM `cax11` was considered and rejected — the
   packer snapshot could not be built for ARM at the time, so the cluster is
-  x86-only.
+  x86-only. **Prereq:** the packer snapshot must exist in `fsn1` before the
+  first `tofu apply` (build it with `packer build` from `terraform/k3s/packer/`
+  when needed).
 
 ### Security
 
@@ -81,11 +91,13 @@ GitOps.
 **Terraform does:**
 
 - Provision the cluster + LB
-- One-time post-apply bootstrap (via `terraform_data` or `null_resource` +
-  `local-exec`) that idempotently applies the `bootstrap/` directory:
+- One-time post-apply bootstrap (via `terraform_data` invoking `kubectl` with
+  the freshly-issued kubeconfig, or via a `null_resource` with `local-exec`)
+  that idempotently applies the `bootstrap/` directory:
   1. `argocd` namespace
-  2. ArgoCD install (Helm release or raw manifests — pick whichever is smaller
-     and more obvious)
+  2. ArgoCD install using raw upstream manifests pinned to a known version
+     (avoids pulling in the Terraform Helm provider; keeps the provider surface
+     small)
   3. Root `Application` pointing at the `homelab-apps` Git repo
 
 The bootstrap is idempotent: if the cluster is destroyed and recreated, a
