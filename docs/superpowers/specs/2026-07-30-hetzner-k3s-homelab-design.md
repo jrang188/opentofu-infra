@@ -36,25 +36,15 @@ scope and will be handled separately.
 | --------------- | ------------------------------------------------------------------------- | ---------------- |
 | Control plane   | 3 × `cx23` (2 vCPU, 4 GB RAM, 40 GB), `fsn1`, stacked etcd, HA            | 3 × €3.78 = €11.34 |
 | Worker pools    | None — workloads schedule on control-plane nodes                          | —                |
-| Ingress LB      | **Klipper LB** (`enable_klipper_metal_lb = true`) instead of Hetzner LB   | —                |
-| Public IP       | 1 × Hetzner Floating IP, attached to one control-plane node               | €1.19            |
+| Load balancer   | 1 × `lb11` in `fsn1`, public, fronts Traefik on :80 / :443                | €5.39            |
 | Network         | One Hetzner private Network, `network_region = "eu-central"`              | free             |
 | CNI             | Flannel (k3s default)                                                     | —                |
 | Storage         | No Longhorn, no Hetzner CSI. PVCs not used in initial scope.              | —                |
-| **Total infra** |                                                                           | **~€12.53**      |
+| **Total infra** |                                                                           | **~€16.73**      |
 
 Explicitly excluded: Tailscale, NAT router, cluster-autoscaler, multi-location
-spread, Hetzner managed LB, IPv6 LB, second Hetzner network, Longhorn,
-cert-manager, External Secrets, any application deployment.
-
-**Klipper LB + Floating IP — failover note:** The Hetzner Floating IP lives on
-one control-plane node. If that node dies, the public ingress is down until
-the Floating IP is reassigned to another node. Hetzner supports moving a
-Floating IP between servers via API; this is *not* automated by
-`kube-hetzner` for klipper LB. For the 4-GB-RAM / single-LB homelab design,
-this is an accepted tradeoff. If uptime becomes a real concern, either
-re-evaluate (managed LB restores HA but costs €5.39/month more) or implement
-a small Floating-IP-failover controller as a follow-up.
+spread, IPv6 LB, second Hetzner network, Longhorn, cert-manager, External Secrets,
+any application deployment.
 
 **Resource headroom note:** 4 GB RAM per node is tight for a busy cluster
 running Prometheus, Grafana, and several apps. The design accepts this because
@@ -141,8 +131,8 @@ controller like ArgoCD or Flux) will be specified and implemented separately.
 - `kubectl get nodes` returns 3 `Ready` control-plane nodes after first apply.
 - The kubeconfig output from Terraform authenticates against the cluster and
   can list namespaces.
-- The public Traefik endpoint (via the Hetzner Floating IP and Klipper LB)
-  responds with a Traefik default backend on :80.
+- The public Traefik endpoint (via the Hetzner lb11) responds with a Traefik
+  default backend on :80.
 - The cluster can be destroyed and recreated with no manual steps beyond
   `tofu destroy` followed by `tofu apply`.
 - Monthly Hetzner cost stays at or under ~€20 (excluding traffic and snapshots).
