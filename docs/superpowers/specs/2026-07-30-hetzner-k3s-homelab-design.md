@@ -8,9 +8,8 @@
 ## Goal
 
 Minimal-cost, minimal-maintenance 3-node k3s cluster on Hetzner Cloud for personal
-/homelab use. This spec covers the cluster bring-up only. Application deployment
-(ArgoCD, Grafana, kube-prometheus, openclaw/hermes, dev experiments) is out of
-scope and will be handled separately.
+/homelab use. Workloads are mostly self-hosted apps (ArgoCD, Grafana, kube-prometheus,
+openclaw/hermes) plus dev experimentation. No persistent data.
 
 ## Non-goals
 
@@ -43,16 +42,15 @@ scope and will be handled separately.
 | **Total infra** |                                                                           | **~€16.73**      |
 
 Explicitly excluded: Tailscale, NAT router, cluster-autoscaler, multi-location
-spread, IPv6 LB, second Hetzner network, Longhorn, cert-manager, External Secrets,
-any application deployment.
+spread, IPv6 LB, second Hetzner network, Longhorn, cert-manager, External Secrets.
 
-**Resource headroom note:** 4 GB RAM per node is tight for a busy cluster
-running Prometheus, Grafana, and several apps. The design accepts this because
-(a) the user's stated workload is light, (b) bumping to `cx33` is a
+**Resource headroom note:** 4 GB RAM per node is tight once kube-prometheus,
+Grafana, ArgoCD, and the operator's apps are running. The design accepts this
+because (a) the user's stated workload is light, (b) bumping to `cx33` is a
 straightforward in-place resize on Hetzner if pressure shows up, and (c) most
-light self-hosted apps are not memory-hungry. Memory usage should be watched
-once monitoring is in place; if the cluster regularly sits above ~80% memory,
-resize the control-plane nodepool to `cx33` rather than introducing workers.
+planned apps are not memory-hungry. Memory usage should be watched in
+Grafana; if the cluster regularly sits above ~80% memory, resize the
+control-plane nodepool to `cx33` rather than introducing workers.
 
 ### Distribution & lifecycle
 
@@ -83,13 +81,57 @@ resize the control-plane nodepool to `cx33` rather than introducing workers.
 - No Tailscale operator access (apply only from home)
 - No OIDC for the kube API in v1 — single operator, static IP, client certs only
 - No Cloudflare Access / Tunnel in v1 — Traefik is open to the public internet
-  on :80/:443. Per-app rate-limiting / auth is a follow-up concern, applied at
-  the application layer (out of scope for this design).
+  on :80/:443, with rate-limiting / auth handled per-app when added via GitOps
 
 ### GitOps layer
 
-Out of scope for this design. Application deployment (including any GitOps
-controller like ArgoCD or Flux) will be specified and implemented separately.
+The cluster is provisioned once via Terraform. Everything past bring-up is
+GitOps.
+
+**Terraform does:**
+
+- Provision the cluster + LB
+- One-time post-apply bootstrap (via `terraform_data` invoking `kubectl` with
+  the freshly-issued kubeconfig, or via a `null_resource` with `local-exec`)
+  that idempotently applies the `bootstrap/` directory:
+  1. `argocd` namespace
+  2. ArgoCD install using raw upstream manifests pinned to a known version
+     (avoids pulling in the Terraform Helm provider; keeps the provider surface
+     small)
+  3. Root `Application` pointing at the `homelab-apps` Git repo
+
+The bootstrap is idempotent: if the cluster is destroyed and recreated, a
+re-apply of Terraform re-runs the bootstrap and ArgoCD syncs the rest of the
+stack from Git.
+
+**ArgoCD owns (in a separate `homelab-apps` repo, not this one):**
+
+- ArgoCD self-config
+- IngressRoutes, cert-manager ClusterIssuer (added when the first real app
+  needs HTTPS)
+- kube-prometheus-stack, Grafana dashboards
+- openclaw / hermes
+- Dev / experimentation apps
+
+**Day-to-day flow:**
+
+- Add an app → write manifests (or Helm values) under
+  `homelab-apps/apps/<name>/`, push. ArgoCD picks it up.
+- Upgrade an app → bump version in values, push.
+- Cluster dies → `tofu apply` from home; bootstrap reapplies; apps self-sync.
+
+### Secrets
+
+None in v1. The current planned workload mix (argocd, kube-prometheus, grafana,
+openclaw) does not need external secrets.
+
+When a real need shows up, add **External Secrets Operator + 1Password Connect**
+in a follow-up. That follow-up will:
+
+- Run 1Password Connect as a Deployment in the cluster
+- Bootstrap the Connect token manually with `kubectl create secret` once after
+  cluster bring-up (chicken-and-egg)
+- Use `ClusterSecretStore` + `ExternalSecret` for everything else
 
 ## Repo changes (this repo, `opentofu-infra`)
 
@@ -97,20 +139,20 @@ controller like ArgoCD or Flux) will be specified and implemented separately.
    only the actual config. Pin the module version.
 2. **Add `terraform/k3s/terraform.tfvars.example`** — committed example
    showing the shape. `terraform.tfvars` is gitignored.
-3. **Update `terraform/k3s/variable.tf`** — add `home_ip` variable (CIDR list
+3. **Add `terraform/k3s/bootstrap/`** — ArgoCD bootstrap manifests
+   (`00-namespace.yaml`, `argocd-install.yaml`, `root-app.yaml`).
+4. **Update `terraform/k3s/variable.tf`** — add `home_ip` variable (CIDR list
    string, with validation).
-4. **Update `.gitignore`** — add `terraform.tfvars`, `*.tfstate*`, `.terraform/`,
+5. **Update `.gitignore`** — add `terraform.tfvars`, `*.tfstate*`, `.terraform/`,
    kubeconfig output files.
-5. **Replace `README.md`** with a quickstart covering: prerequisites, Hetzner
-   token export, `tofu init` / `tofu apply`, fetching the kubeconfig, and
-   verifying cluster health. No app-layer instructions.
-6. **No CI in v1.** GitHub Actions for `tofu fmt` / `tofu validate` / `tofu plan`
+6. **Replace `README.md`** with a quickstart covering: prerequisites, Hetzner
+   token export, `tofu init` / `tofu apply`, fetching the kubeconfig, reaching
+   the ArgoCD UI, and the link to the `homelab-apps` repo.
+7. **No CI in v1.** GitHub Actions for `tofu fmt` / `tofu validate` / `tofu plan`
    can be added in a follow-up.
 
 ## Out of scope (deferred to follow-ups)
 
-- Application deployment (ArgoCD, Flux, Helm releases, anything app-layer)
-- `homelab-apps` repo and its layout
 - External Secrets Operator + 1Password Connect
 - cert-manager + ClusterIssuer + public-CA certificates
 - Longhorn / replicated storage
@@ -121,20 +163,20 @@ controller like ArgoCD or Flux) will be specified and implemented separately.
 - Public IPv6 LB
 - OIDC for the kube API
 - Cloudflare Access in front of Traefik
-- Backups / disaster recovery (volumes are ephemeral by design; cluster
-  state worth backing up is the Terraform state file, not application data)
+- Backups / disaster recovery (volumes are ephemeral by design; the only state
+  worth backing up is the `homelab-apps` Git repo, which is already in Git)
 
 ## Success criteria
 
 - `tofu apply` from a freshly-cloned repo, with `TF_VAR_hcloud_token` set and a
   populated `terraform.tfvars`, provisions the 3-node k3s + LB in a single run.
-- `kubectl get nodes` returns 3 `Ready` control-plane nodes after first apply.
-- The kubeconfig output from Terraform authenticates against the cluster and
-  can list namespaces.
-- The public Traefik endpoint (via the Hetzner lb11) responds with a Traefik
-  default backend on :80.
+- ArgoCD is reachable, synced, and watching the `homelab-apps` repo at the end
+  of the first apply.
+- All planned apps (kube-prometheus, grafana, argocd, openclaw) are installable
+  by pushing manifests to `homelab-apps` — no further `tofu apply` required.
 - The cluster can be destroyed and recreated with no manual steps beyond
   `tofu destroy` followed by `tofu apply`.
+- No `tofu apply` is required to add, change, or remove an app.
 - Monthly Hetzner cost stays at or under ~€20 (excluding traffic and snapshots).
 
 ## Open questions
