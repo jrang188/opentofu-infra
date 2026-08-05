@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "last_run": "2026-08-05T08:00:03.906Z",
+    "root": "/Users/sirwayne/Developer/devops/opentofu-infra",
+    "include_patterns": [
+      "**/*"
+    ],
+    "exclude_patterns": [],
+    "exceptions": []
+  },
+  "file_hashes": {
+    ".gitignore": "36876fe7688c92778b460308c1a0a1d3",
+    ".pre-commit-config.yaml": "3e24c84900c0fcaad7f623b22ff421de",
+    ".tflint.hcl": "f36d495748fc5bc7fa7446f15ce70607",
+    "AGENTS.md": "e5dad4002db7461db1291847d109adeb",
+    "CLAUDE.md": "d9c1aa00474b45b2de5f587fe328cb8d",
+    "README.md": "331e94a296da1ed3a199659d359df781",
+    "skills-lock.json": "3e5618652875d1693b9a78d221d7c5bc",
+    "terraform/k3s/.terraform.lock.hcl": "8f13b059fbe65dd89513e03b09896842",
+    "terraform/k3s/kube.tf": "161b6a4434ecc2599c92bcedfd8cc7f8",
+    "terraform/k3s/outputs.tf": "25414e6a7ecdb66bd77c1731ca83b9ff",
+    "terraform/k3s/packer/hcloud-leapmicro-snapshots.pkr.hcl": "087891d84c5b943ec83901cb7f24122b",
+    "terraform/k3s/packer/hcloud-microos-snapshots.pkr.hcl": "3fe7fa2a34fbd3e1447f55df69a19405",
+    "terraform/k3s/providers.tf": "5b7b2d35b2a366a5d86b6566d88e026d",
+    "terraform/k3s/terraform.tf": "3fb933ff0808c7e4750823562574bf93",
+    "terraform/k3s/terraform.tfvars.example": "ee2d01cb1c50557f298b9d83a9356a43",
+    "terraform/k3s/variables.tf": "cf5e5ed00879cb3a586cf3790e5dd113"
+  },
+  "folder_hashes": {
+    ".": "a6e49be7a3b94f9b92f9bb6066e2040a",
+    "terraform": "81b15ce099b737a1597c847ad8824b7a",
+    "terraform/k3s": "81b15ce099b737a1597c847ad8824b7a",
+    "terraform/k3s/packer": "bec0010508a60a288221b7bfd7f47e30"
+  }
+}
