@@ -38,6 +38,10 @@ module "kube-hetzner" {
 
     auth = {
       mode = "auth_key"
+      # Tag naming convention (shared with ../../../homelab-nix): tag:k8s-<role>
+      # or tag:k8s-<role>-<location>. Requires tag:k8s-control-plane to be owned
+      # in the Tailnet ACL's tagOwners before this applies cleanly.
+      advertise_tags_control_plane = ["tag:k8s-control-plane"]
     }
 
     routing = {
