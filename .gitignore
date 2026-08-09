@@ -16,6 +16,10 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 
+# 1Password CLI env file: maps TF_VAR_* to secret references. Gitignored because
+# the item/vault names reveal the secret inventory.
+.env.tofu
+
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
 override.tf

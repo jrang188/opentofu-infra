@@ -48,22 +48,37 @@ Roughly €11.34/month for the three servers, excluding traffic and snapshots.
 cp terraform/k3s/terraform.tfvars.example terraform/k3s/terraform.tfvars
 ```
 
-Fill in `tailscale_magicdns_domain` and your SSH key paths, then export the
-secrets rather than writing them to disk:
+Fill in `tailscale_magicdns_domain` in `terraform.tfvars`. The Hetzner token,
+Tailscale auth key, and SSH keys come from 1Password via the CLI, never from
+disk. Create `terraform/k3s/.env.tofu` (gitignored) with secret references
+pointing at your items:
 
 ```bash
-export TF_VAR_hcloud_token=... TF_VAR_tailscale_auth_key=...
+TF_VAR_hcloud_token="op://Development/Hetzner Cloud API Token/token"
+TF_VAR_tailscale_auth_key="op://Development/Tailscale/tailscale_auth_key"
+TF_VAR_ssh_public_key="op://Development/SSH Key/public key"
+TF_VAR_ssh_private_key="op://Development/SSH Key/private key"
 ```
+
+Then run OpenTofu under `op run`, which resolves those references into
+environment variables for the subprocess only:
 
 ```bash
-cd terraform/k3s && tofu init && tofu plan -out=k3s.tfplan
+cd terraform/k3s
+op run --env-file=.env.tofu -- tofu init
+op run --env-file=.env.tofu -- tofu plan -out=k3s.tfplan
 ```
 
-Review the plan, then apply the reviewed artifact:
+Review the plan, then apply the reviewed artifact (secrets are still needed for
+the apply, so run it under `op run` too):
 
 ```bash
-tofu apply k3s.tfplan
+op run --env-file=.env.tofu -- tofu apply k3s.tfplan
 ```
+
+SSH keys have a fallback: if you do not set `TF_VAR_ssh_*`, the config reads
+`ssh_public_key_path` / `ssh_private_key_path` from disk (defaulting to
+`~/.ssh/id_ed25519[.pub]`). The 1Password content wins when both are provided.
 
 Retrieve the kubeconfig:
 

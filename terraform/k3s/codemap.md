@@ -25,12 +25,13 @@ files by concern:
   is 1.10.1) and `hcloud ~> 1.62` (major pin to block a silent 2.x
   bump). `.terraform.lock.hcl` is committed.
 - `providers.tf` — wires `provider "hcloud"` with `var.hcloud_token`.
-- `variables.tf` — five variables: `cluster_name` (regex-validated
+- `variables.tf` — seven variables: `cluster_name` (regex-validated
   lowercase/digits/dashes), `hcloud_token` (sensitive),
-  `ssh_private_key_path` + `ssh_public_key_path` (defaults to
-  `~/.ssh/id_ed25519[.pub]`, must be a matching pair),
-  `tailscale_auth_key` (sensitive, must be reusable and
-  non-ephemeral), `tailscale_magicdns_domain` (regex-validated
+  `ssh_public_key_path` + `ssh_private_key_path` (default
+  `~/.ssh/id_ed25519[.pub]`, must be a matching pair) with `ssh_public_key` +
+  `ssh_private_key` as content overrides (sensitive, injected via 1Password
+  env vars, win over the paths), `tailscale_auth_key` (sensitive, must be
+  reusable and non-ephemeral), `tailscale_magicdns_domain` (regex-validated
   `*.ts.net`).
 - `terraform.tfvars.example` — copy to `terraform.tfvars`
   (gitignored). Secrets via `TF_VAR_*` env vars, not in this file.

@@ -1,18 +1,24 @@
 # Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
 #
-# Secrets are better passed as environment variables than written to disk:
-#   export TF_VAR_hcloud_token=...
-#   export TF_VAR_tailscale_auth_key=...
+# Secrets are injected as environment variables via the 1Password CLI, never
+# written to disk. Put secret references in .env.tofu (gitignored) and run:
+#   op run --env-file=.env.tofu -- tofu plan
+# The hcloud token, Tailscale key, and SSH key content are all sourced this way:
+#   TF_VAR_hcloud_token
+#   TF_VAR_tailscale_auth_key
+#   TF_VAR_ssh_public_key    (OpenSSH authorized_keys format)
+#   TF_VAR_ssh_private_key   (PEM)
+#
+# SSH keys have a fallback: leave the *_key content vars unset and instead set
+# the *_path vars below (or their ~/.ssh/id_ed25519 defaults) to read from disk.
+# Content via env var wins when both are provided.
 
 cluster_name = "k3s"
 
 # Your Tailnet's MagicDNS domain — Tailscale admin console > DNS.
 tailscale_magicdns_domain = "tailXXXX.ts.net"
 
-# Override only if your keys live elsewhere.
+# Optional: use files on disk instead of 1Password content. Defaults apply if
+# left unset.
 # ssh_public_key_path  = "~/.ssh/id_ed25519.pub"
 # ssh_private_key_path = "~/.ssh/id_ed25519"
-
-# Prefer the env vars above instead of uncommenting these.
-# hcloud_token       = ""
-# tailscale_auth_key = ""

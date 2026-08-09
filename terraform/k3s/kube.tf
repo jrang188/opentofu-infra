@@ -10,8 +10,11 @@ module "kube-hetzner" {
   cluster_name   = var.cluster_name
   network_region = "eu-central"
 
-  ssh_public_key  = file(var.ssh_public_key_path)
-  ssh_private_key = file(var.ssh_private_key_path)
+  # SSH keys: content wins when provided (1Password via TF_VAR_ssh_*), otherwise
+  # fall back to the *_path variables. The conditional is lazy, so file() only
+  # runs on the path branch and never on a null default.
+  ssh_public_key  = var.ssh_public_key != null ? var.ssh_public_key : file(var.ssh_public_key_path)
+  ssh_private_key = var.ssh_private_key != null ? var.ssh_private_key : file(var.ssh_private_key_path)
 
   # ---------------------------------------------------------------------------
   # Node transport: Tailscale

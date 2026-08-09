@@ -18,18 +18,29 @@ variable "hcloud_token" {
   sensitive   = true
 }
 
-variable "ssh_private_key_path" {
-  description = "Path to the SSH private key OpenTofu uses to provision nodes. Must be the pair of ssh_public_key_path."
-  type        = string
-  default     = "~/.ssh/id_ed25519"
-  nullable    = false
-}
-
 variable "ssh_public_key_path" {
-  description = "Path to the SSH public key authorized on every node."
+  description = "Path to the SSH public key authorized on every node. Used when ssh_public_key is unset. Must be the pair of ssh_private_key_path."
   type        = string
   default     = "~/.ssh/id_ed25519.pub"
-  nullable    = false
+}
+
+variable "ssh_private_key_path" {
+  description = "Path to the SSH private key OpenTofu uses to provision nodes. Used when ssh_private_key is unset. Must be the pair of ssh_public_key_path."
+  type        = string
+  default     = "~/.ssh/id_ed25519"
+}
+
+variable "ssh_public_key" {
+  description = "SSH public key content (OpenSSH authorized_keys format) authorized on every node. Overrides ssh_public_key_path. Prefer injecting TF_VAR_ssh_public_key via the 1Password CLI (op run --env-file=.env.tofu) over writing it to a tfvars file."
+  type        = string
+  default     = null
+}
+
+variable "ssh_private_key" {
+  description = "SSH private key content (PEM) OpenTofu uses to provision nodes. Overrides ssh_private_key_path. Prefer injecting TF_VAR_ssh_private_key via the 1Password CLI (op run --env-file=.env.tofu) over writing it to a tfvars file."
+  type        = string
+  default     = null
+  sensitive   = true
 }
 
 variable "tailscale_auth_key" {
