@@ -44,7 +44,14 @@ terraform.rc
 # Cluster kubeconfig written by kube-hetzner (create_kubeconfig defaults to true)
 *_kubeconfig.yaml
 
+# Kustomization backup written by kube-hetzner (create_kustomization defaults to true);
+# sensitive, regenerated on every apply
+*_kustomization_backup.yaml
+
 # Vendored agent skill packages: restorable via `npx skills add` from
 # skills-lock.json, which is tracked. Not project code, no need to commit.
 .agents/
 .claude/skills/
+
+# 1Password
+.op

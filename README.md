@@ -149,5 +149,17 @@ access and is the slowest hook. Later runs reuse the cached `.terraform/`.
   nodepools it is the only thing that lets workloads schedule at all.
 - **Do not downgrade below module v3.0.1.** v3.0.0 fails later plans on
   zero-agent clusters (kube-hetzner#2236 / #2238).
+- **Tailscale + CCM leaves nodes with the `node.cloudprovider.kubernetes.io/uninitialized`
+  taint (module gap, unfixed through v3.1.0).** With `node_transport_mode = "tailscale"`
+  and a single network, k3s registers nodes with private IPs (`10.255.0.x`) and no
+  `node-external-ip`, so the Hetzner CCM cannot match them against the Hetzner API and
+  never removes the uninitialized taint. All workload pods stay `Pending` and the
+  `terraform_data.kustomization` remote-exec times out waiting on the
+  system-upgrade-controller deployment. Manual fix:
+  `kubectl taint nodes --all node.cloudprovider.kubernetes.io/uninitialized-`
+  (must be repeated after any node reboot/kubelet restart). Root fix is to set
+  `node-external-ip` on each control plane, but `control_planes_custom_config` cannot
+  express per-node values — see the `node-untainter` DaemonSet experiment (removed) or
+  wait for an upstream module fix.
 - `packer/hcloud-microos-snapshots.pkr.hcl` is unused — this cluster runs Leap
   Micro. It is kept only for reference.
