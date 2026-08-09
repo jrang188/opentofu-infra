@@ -35,6 +35,9 @@ files by concern:
   `*.ts.net`).
 - `terraform.tfvars.example` — copy to `terraform.tfvars`
   (gitignored). Secrets via `TF_VAR_*` env vars, not in this file.
+- `Makefile` — wraps the `op run --env-file=.env.tofu -- tofu ...` flow:
+  `make init|plan|apply|kubeconfig|destroy|apply-destroy|fmt|validate`.
+  `.env.tofu` (gitignored) maps `TF_VAR_*` to 1Password secret references.
 - `outputs.tf` — `control_planes_public_ipv4` (the IPs Klipper serves
   `:80`/`:443` on) and `kubeconfig` (sensitive; extract with
   `tofu output -raw kubeconfig`).
@@ -51,7 +54,9 @@ in Tailscale mode).
 
 ## Flow
 
-Apply (per the README, repeated here because the order is the point):
+Apply (per the README, repeated here because the order is the point). All
+tofu commands run under `op run --env-file=.env.tofu` (secrets stay in
+1Password), wrapped by the Makefile:
 
 1. `tofu init` — downloads the module, populates `.terraform/`.
 2. `tofu plan -out=k3s.tfplan` — must be reviewed before apply;
@@ -72,8 +77,8 @@ the kube-hetzner repo handles the retry and prints an orphan report.
 
 - Consumes: the snapshot built by `terraform/k3s/packer/`, the
   Hetzner Cloud API (`TF_VAR_hcloud_token`), the Tailscale Tailnet
-  (auth key + machine membership for the operator), a local SSH
-  keypair.
+  (auth key + machine membership for the operator), SSH keys from
+  1Password (`TF_VAR_ssh_public_key` / `TF_VAR_ssh_private_key`).
 - Consumed by: the operator running `tofu apply` from a
   Tailnet-joined host; cluster workloads via Klipper on each node's
   public IP. State is local and unencrypted, so any host running

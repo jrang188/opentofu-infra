@@ -61,19 +61,20 @@ TF_VAR_ssh_private_key="op://Development/SSH Key/private key"
 ```
 
 Then run OpenTofu under `op run`, which resolves those references into
-environment variables for the subprocess only:
+environment variables for the subprocess only. The Makefile in
+`terraform/k3s/` wraps this (`make init`, `make plan`, `make apply`):
 
 ```bash
 cd terraform/k3s
-op run --env-file=.env.tofu -- tofu init
-op run --env-file=.env.tofu -- tofu plan -out=k3s.tfplan
+make init
+make plan      # op run --env-file=.env.tofu -- tofu plan -out=k3s.tfplan
 ```
 
 Review the plan, then apply the reviewed artifact (secrets are still needed for
-the apply, so run it under `op run` too):
+the apply, so it runs under `op run` too):
 
 ```bash
-op run --env-file=.env.tofu -- tofu apply k3s.tfplan
+make apply     # op run --env-file=.env.tofu -- tofu apply k3s.tfplan
 ```
 
 SSH keys have a fallback: if you do not set `TF_VAR_ssh_*`, the config reads
@@ -95,13 +96,13 @@ Expect three `Ready` control-plane nodes.
 ### Teardown
 
 ```bash
-cd terraform/k3s && tofu plan -destroy -out=destroy.tfplan
+cd terraform/k3s && make destroy   # plan -destroy -out=destroy.tfplan
 ```
 
-Review what will be deleted, then `tofu apply destroy.tfplan`. If the ingress
-load balancer detach races with the Hetzner CCM, the upstream
-`scripts/destroy.sh` in the kube-hetzner repo handles that retry and prints an
-orphan report.
+Review what will be deleted, then `make apply-destroy` (apply is intentionally
+not automatic). If the ingress load balancer detach races with the Hetzner CCM,
+the upstream `scripts/destroy.sh` in the kube-hetzner repo handles that retry
+and prints an orphan report.
 
 ### Development
 
