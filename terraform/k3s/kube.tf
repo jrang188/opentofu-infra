@@ -41,10 +41,14 @@ module "kube-hetzner" {
     }
 
     routing = {
-      # Single Hetzner Network and no external-network nodepools, so no
-      # node-private /32 routes need advertising and no Tailnet route approvals
-      # are required. Must become true if external-network nodepools are added.
-      advertise_node_private_routes = false
+      # Each control plane advertises its own private /32 over Tailscale so
+      # Tailscale-only nodes (e.g. a home k3s agent with no Hetzner private
+      # network presence) have a route back to flannel's node-ips. Reboot-safe:
+      # a control plane's /32 drops with it during rolling upgrades while the
+      # others keep advertising theirs. Requires one-time manual approval of
+      # the advertised routes in the Tailscale admin console.
+      # See ../../../homelab-nix/docs/adr/0001-tailscale-subnet-routes-for-home-agent-pod-network.md
+      advertise_node_private_routes = true
     }
   }
 
