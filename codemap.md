@@ -20,6 +20,9 @@ pre-commit.
 - `pre-commit run --all-files` — the only validation surface
   (`fmt`, `validate`, `tflint`, `trivy`).
 - `README.md` — setup, teardown, and operational notes.
+- `docs/homelab-ecosystem.md` — the two sibling repos (`homelab-nix`,
+  `homelab-k8s`) this cluster cooperates with and the contracts crossing
+  repo boundaries (Tailscale tags, private-route advertisement).
 - `AGENTS.md` — hard rules and quirks for OpenCode sessions.
 - `skills-lock.json` — content-addressed vendored skills
   (`.agents/skills/`, `.claude/skills/`), restorable via

@@ -2,6 +2,12 @@
 
 OpenTofu configuration for personal infrastructure.
 
+> This repo is one of three cooperating in a home k8s homelab. The cluster
+> shape — 3 Hetzner control planes here, a home agent node from
+> `homelab-nix`, workloads in the GitOps repo `homelab-k8s` — and the
+> contracts that cross those boundaries are documented in
+> [`docs/homelab-ecosystem.md`](docs/homelab-ecosystem.md).
+
 ## `terraform/k3s` — Hetzner k3s cluster
 
 A 3-node k3s cluster on Hetzner Cloud, built on
