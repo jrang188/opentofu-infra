@@ -160,6 +160,11 @@ access and is the slowest hook. Later runs reuse the cached `.terraform/`.
   (must be repeated after any node reboot/kubelet restart). Root fix is to set
   `node-external-ip` on each control plane, but `control_planes_custom_config` cannot
   express per-node values — see the `node-untainter` DaemonSet experiment (removed) or
-  wait for an upstream module fix.
+  wait for an upstream module fix. Full step-by-step:
+  [`docs/runbooks/tailscale-ccm-uninitialized-taint.md`](docs/runbooks/tailscale-ccm-uninitialized-taint.md).
+- **Simultaneous control-plane bootstrap can exceed the module's 360s join
+  timeout**, failing `tofu apply` with exit 124 on `terraform_data.control_planes`
+  even though k3s is actually healthy. See
+  [`docs/runbooks/control-plane-join-timeout.md`](docs/runbooks/control-plane-join-timeout.md).
 - `packer/hcloud-microos-snapshots.pkr.hcl` is unused — this cluster runs Leap
   Micro. It is kept only for reference.
