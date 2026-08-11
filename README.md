@@ -64,6 +64,7 @@ TF_VAR_hcloud_token="op://Development/Hetzner Cloud API Token/token"
 TF_VAR_tailscale_auth_key="op://Development/Tailscale/tailscale_auth_key"
 TF_VAR_ssh_public_key="op://Development/SSH Key/public key"
 TF_VAR_ssh_private_key="op://Development/SSH Key/private key"
+TF_VAR_onepassword_service_account_token="op://Development/1Password/service_account_token"
 ```
 
 Then run OpenTofu under `op run`, which resolves those references into
@@ -147,6 +148,15 @@ access and is the slowest hook. Later runs reuse the cached `.terraform/`.
   [OpenTofu state encryption](https://opentofu.org/docs/language/state/encryption/),
   supplied via the `TF_ENCRYPTION` environment variable so no passphrase lands
   in the repo. Easiest to enable before the first apply.
+- **The ESO bootstrap Secret `external-secrets/onepassword-token` is created by
+  Terraform, not GitOps** (per ADR-0006). Its lifecycle (initial creation,
+  rotation) lives in opentofu-infra state. The matching homelab-k8s
+  `ClusterSecretStore` references this exact name/namespace/key — change both
+  repos in lockstep if any of those three values ever move. The token itself is
+  delivered via the provider's write-only `data_wo` attribute, so it is **not**
+  stored in the state file or shown in plan output; `TF_ENCRYPTION` (bullet
+  above) still covers the kubeconfig / Tailscale key / cluster token already
+  in state.
 - **Klipper on node IPs has no stable address.** Each node serves ingress on its
   own public IP, so replacing a node changes it. Fine while nothing public
   depends on the cluster; move to a Floating IP or a managed load balancer

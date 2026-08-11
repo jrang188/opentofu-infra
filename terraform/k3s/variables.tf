@@ -50,6 +50,24 @@ variable "tailscale_auth_key" {
   sensitive   = true
 }
 
+variable "onepassword_service_account_token" {
+  description = <<-EOT
+    1Password service-account token used by ESO's ClusterSecretStore to
+    authenticate to the 1Password SDK. Delivered to the cluster as a
+    Kubernetes Secret in the `external-secrets` namespace by
+    `kubernetes_secret_v1.onepassword_token` in secrets.tf. This is the
+    cross-repo interface contract documented in ADR-0006 and consumed by the
+    homelab-k8s `infra/eso` ClusterSecretStore. Must be injected via
+    TF_VAR_onepassword_service_account_token (1Password CLI / `op run
+    --env-file=.env.tofu`), never written to disk. Written to the cluster via
+    the provider's write-only `data_wo` attribute, so it is not stored in the
+    state file.
+  EOT
+  type        = string
+  nullable    = false
+  sensitive   = true
+}
+
 variable "tailscale_magicdns_domain" {
   description = "The Tailnet's MagicDNS domain, e.g. \"tail1234.ts.net\". Found in the Tailscale admin console under DNS."
   type        = string

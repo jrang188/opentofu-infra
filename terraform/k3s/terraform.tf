@@ -11,5 +11,13 @@ terraform {
       # in .terraform.lock.hcl — commit that file.
       version = "~> 1.62"
     }
+    kubernetes = {
+      source = "hashicorp/kubernetes"
+      # Major pin to match the hcloud pattern. The kube-hetzner module already
+      # requires >= 3.1.0 (locked at 3.2.1 in .terraform.lock.hcl), so this
+      # just widens nothing and blocks a future 4.x release from being picked
+      # up silently. Commit the lockfile after `make init`.
+      version = "~> 3.1"
+    }
   }
 }

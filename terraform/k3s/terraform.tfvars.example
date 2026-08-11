@@ -3,11 +3,15 @@
 # Secrets are injected as environment variables via the 1Password CLI, never
 # written to disk. Put secret references in .env.tofu (gitignored) and run:
 #   op run --env-file=.env.tofu -- tofu plan
-# The hcloud token, Tailscale key, and SSH key content are all sourced this way:
+# The hcloud token, Tailscale key, SSH key content, and the ESO bootstrap
+# token are all sourced this way:
 #   TF_VAR_hcloud_token
 #   TF_VAR_tailscale_auth_key
 #   TF_VAR_ssh_public_key    (OpenSSH authorized_keys format)
 #   TF_VAR_ssh_private_key   (PEM)
+#   TF_VAR_onepassword_service_account_token   (1Password service-account
+#                                              token, used by ESO's
+#                                              ClusterSecretStore)
 #
 # SSH keys have a fallback: leave the *_key content vars unset and instead set
 # the *_path vars below (or their ~/.ssh/id_ed25519 defaults) to read from disk.
