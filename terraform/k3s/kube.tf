@@ -88,22 +88,21 @@ module "kube-hetzner" {
   allow_scheduling_on_control_plane = true
 
   # ---------------------------------------------------------------------------
-  # Ingress: Klipper on node public IPs
+  # Ingress: Klipper on node public IPs, Traefik owned by homelab-k8s
   # ---------------------------------------------------------------------------
   # No Hetzner managed load balancer, so no LB cost. Klipper binds :80/:443 on
-  # each node's own public IP and forwards to Traefik.
+  # each node's own public IP and forwards to the cluster's Traefik, which is
+  # owned by homelab-k8s (`infra/traefik` wrapper chart) rather than this
+  # module. `ingress_controller = "none"` is what keeps kube-hetzner from
+  # installing its own Traefik via HelmChartConfig — the documented upstream
+  # convention for "I run my own ingress." See homelab-k8s ADR-0004.
   #
   # Tradeoff: there is no stable public address. Every node has its own IP and
   # replacing a node changes it, so DNS pointed at a node IP breaks on node
   # replacement. Fine while nothing public depends on it — revisit before
   # pointing a real domain here (a Floating IP or managed LB solves this).
   enable_klipper_metal_lb = true
-  ingress_controller      = "traefik"
-
-  # One Traefik pod per node. The autodetect default (0) resolves to 1 replica
-  # when there are zero agent nodes, which would serve all ingress from a single
-  # pod on a single node.
-  ingress_replica_count = 3
+  ingress_controller      = "none"
 
   # ---------------------------------------------------------------------------
   # Storage: none

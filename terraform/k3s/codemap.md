@@ -46,8 +46,9 @@ files by concern:
 Cluster shape: 3 × `cx23` in `fsn1`, `k3s stable` channel,
 `automatically_upgrade_kubernetes = true`,
 `automatically_upgrade_os = true`, `enable_klipper_metal_lb = true`,
-`ingress_controller = "traefik"`, `ingress_replica_count = 3`
-(autodetect resolves to 1 with zero agents), `enable_hetzner_csi =
+`ingress_controller = "none"` (Traefik owned by homelab-k8s;
+kube-hetzner's built-in Traefik disabled per ADR-0004),
+`enable_hetzner_csi =
 false`, `enable_longhorn = false`, `firewall_kube_api_source = null`,
 `firewall_ssh_source = null` (the module rejects world-open values
 in Tailscale mode).
