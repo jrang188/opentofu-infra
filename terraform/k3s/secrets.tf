@@ -21,7 +21,7 @@
 
 resource "kubernetes_namespace_v1" "external_secrets" {
   metadata {
-    name = "external-secrets"
+    name = "eso"
   }
 
   # The homelab-k8s ESO Helm chart also targets this namespace (via
