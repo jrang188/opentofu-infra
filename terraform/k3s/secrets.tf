@@ -15,9 +15,16 @@
 # `data_wo` is a write-only attribute (provider v3, OpenTofu >= 1.10): the
 # token is sent to the cluster at apply time but is never written to the
 # state file or shown in plan output. Rotation = bump the token in 1Password,
-# update .env.tofu, re-apply. The provider tracks a data_wo_revision counter
-# so a changed token is pushed on the next apply even though the value is
-# not readable back from state.
+# update .env.tofu, re-apply.
+#
+# The provider does NOT auto-track a revision counter — it must be set
+# explicitly. `data_wo` is only written to the cluster when
+# `data_wo_revision >= 1` (create) and only re-pushed when it changes
+# (update). Without it the data_wo payload is silently skipped and the
+# Secret is created empty. We derive the revision from the SHA-256 of the
+# token (first 13 hex digits → int, +1 to guarantee ≥ 1) so a new token
+# automatically produces a new revision and is pushed on the next apply,
+# without storing the token itself in state.
 
 resource "kubernetes_namespace_v1" "external_secrets" {
   metadata {
@@ -38,6 +45,10 @@ resource "kubernetes_secret_v1" "onepassword_token" {
     name      = "onepassword-token"
     namespace = kubernetes_namespace_v1.external_secrets.metadata[0].name
   }
+
+  # Must be >= 1 for data_wo to be written; must change for data_wo to be
+  # re-pushed on update. Derived from the token so rotation auto-bumps it.
+  data_wo_revision = nonsensitive(parseint(substr(sha256(var.onepassword_service_account_token), 0, 13), 16)) + 1
 
   data_wo = {
     token = var.onepassword_service_account_token
