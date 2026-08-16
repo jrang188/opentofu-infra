@@ -74,6 +74,36 @@ module "kube-hetzner" {
       labels      = []
       taints      = []
       count       = 3
+      # kube-hetzner hardcodes --accept-dns=false in the Tailscale bootstrap
+      # script (locals.tf), but k3s etcd peer TLS requires MagicDNS for
+      # hostname verification between control planes. This systemd unit
+      # re-enables DNS acceptance on every boot, not just cloud-init's first
+      # run — see docs/runbooks/tailscale-private-route-advertisement.md.
+      extra_write_files = [
+        {
+          path        = "/etc/systemd/system/tailscale-accept-dns.service"
+          owner       = "root:root"
+          permissions = "0644"
+          content     = <<-EOT
+            [Unit]
+            Description=Re-enable Tailscale MagicDNS for k3s etcd peer TLS
+            After=tailscaled.service
+            Requires=tailscaled.service
+
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/local/bin/tailscale set --accept-dns=true
+            RemainAfterExit=true
+
+            [Install]
+            WantedBy=multi-user.target
+          EOT
+        }
+      ]
+      extra_runcmd = [
+        "systemctl daemon-reload",
+        "systemctl enable --now tailscale-accept-dns.service",
+      ]
     }
   ]
 

@@ -47,8 +47,19 @@ agent must `--accept-routes`.
 Implemented here in `terraform/k3s/kube.tf`:
 `tailscale_node_transport.routing.advertise_node_private_routes = true`
 (reboot-safe by construction — a `/32` drops with its node during rolling
-upgrades). Requires one-time manual approval of the three routes in the
-Tailscale admin console.
+upgrades). Routes are auto-approved via Tailnet ACL `autoApprovers.routes`
+for `tag:k8s-control-plane` on `10.255.0.0/16`.
+
+**Known limitation — kube-hetzner `--accept-dns=false`:** The module's
+Tailscale bootstrap script hardcodes `--accept-dns=false` (locals.tf:423),
+which disables MagicDNS. k3s etcd peer TLS requires MagicDNS for hostname
+verification between control planes. A systemd service
+(`tailscale-accept-dns.service`) on each control plane re-enables DNS after
+tailscaled starts. The `extra_runcmd` in kube.tf also sets
+`tailscale set --accept-dns=true` for future server recreations.
+
+See [`docs/runbooks/tailscale-private-route-advertisement.md`](runbooks/tailscale-private-route-advertisement.md)
+for the full incident write-up.
 
 ### The home node's k3s join
 
@@ -72,7 +83,11 @@ Each repo has its own secrets mechanism; nothing is shared in plaintext:
 ## Status
 
 - Control-plane private-route advertisement (`advertise_node_private_routes =
-  true`): **landed and applied** in this repo.
+  true`): **live and verified** (2026-08-16). Routes are advertised (`/32` per
+  node) and auto-approved via Tailnet ACL. Fixed a kube-hetzner limitation
+  where `ignore_changes` on `user_data` prevented existing servers from
+  picking up the config change. Systemd workaround for `--accept-dns=false`
+  deployed. See runbook for details.
 - Home node `k3s-agent-hml`: **installed and live**; its first-install
   checklist (secrets, drain ServiceAccount, cluster-side setup) is complete.
 - Planned, not yet built (tracked in `homelab-k8s`): Hermes Agent — an
