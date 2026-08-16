@@ -1,0 +1,4 @@
+projects:
+  - name: k3s
+    dir: terraform/k3s
+    opentofu: true
