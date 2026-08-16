@@ -6,15 +6,16 @@ module "kube-hetzner" {
     hcloud = hcloud
   }
 
-  hcloud_token   = var.hcloud_token
+  # See onepassword.tf: these are plain (non-ephemeral) data sources, not the
+  # ephemeral resources used for provider auth — this module's input
+  # variables aren't declared `ephemeral = true` upstream, so OpenTofu
+  # rejects an ephemeral value here.
+  hcloud_token   = data.onepassword_item.hcloud_token.credential
   cluster_name   = var.cluster_name
   network_region = "eu-central"
 
-  # SSH keys: content wins when provided (1Password via TF_VAR_ssh_*), otherwise
-  # fall back to the *_path variables. The conditional is lazy, so file() only
-  # runs on the path branch and never on a null default.
-  ssh_public_key  = var.ssh_public_key != null ? var.ssh_public_key : file(var.ssh_public_key_path)
-  ssh_private_key = var.ssh_private_key != null ? var.ssh_private_key : file(var.ssh_private_key_path)
+  ssh_public_key  = data.onepassword_item.ssh_key.public_key
+  ssh_private_key = data.onepassword_item.ssh_key.private_key
 
   # ---------------------------------------------------------------------------
   # Node transport: Tailscale
@@ -30,7 +31,7 @@ module "kube-hetzner" {
   # there is no public SSH for the default "remote_exec" bootstrap to use, so
   # Tailscale has to come up from cloud-init before Terraform ever connects.
   node_transport_mode = "tailscale"
-  tailscale_auth_key  = var.tailscale_auth_key
+  tailscale_auth_key  = data.onepassword_item.tailscale.credential
 
   tailscale_node_transport = {
     bootstrap_mode  = "cloud_init"

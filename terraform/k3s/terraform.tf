@@ -19,5 +19,9 @@ terraform {
       # up silently. Commit the lockfile after `make init`.
       version = "~> 3.1"
     }
+    onepassword = {
+      source  = "1password/onepassword"
+      version = "3.3.1"
+    }
   }
 }

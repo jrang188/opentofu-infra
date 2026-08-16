@@ -14,17 +14,24 @@
 #
 # `data_wo` is a write-only attribute (provider v3, OpenTofu >= 1.10): the
 # token is sent to the cluster at apply time but is never written to the
-# state file or shown in plan output. Rotation = bump the token in 1Password,
-# update .env.tofu, re-apply.
+# state file or shown in plan output. The value comes from
+# ephemeral.onepassword_item.eso_service_account_token (onepassword.tf), a
+# true ephemeral resource — fetched fresh each phase, never persisted
+# anywhere. Rotation = bump the token in 1Password, then bump
+# var.onepassword_service_account_token_revision below, re-apply.
 #
 # The provider does NOT auto-track a revision counter — it must be set
 # explicitly. `data_wo` is only written to the cluster when
 # `data_wo_revision >= 1` (create) and only re-pushed when it changes
 # (update). Without it the data_wo payload is silently skipped and the
-# Secret is created empty. We derive the revision from the SHA-256 of the
-# token (first 13 hex digits → int, +1 to guarantee ≥ 1) so a new token
-# automatically produces a new revision and is pushed on the next apply,
-# without storing the token itself in state.
+# Secret is created empty.
+#
+# This used to auto-derive the revision from a SHA-256 hash of the token
+# value, so rotation was self-detecting. That trick requires a non-ephemeral
+# copy of the token to hash — an ephemeral value stays ephemeral through
+# function calls (sha256() included), so it can't feed a plain argument like
+# data_wo_revision. Genuinely never letting the token touch state means
+# giving up auto-detection: the revision is now a manually-bumped variable.
 
 resource "kubernetes_namespace_v1" "external_secrets" {
   metadata {
@@ -47,10 +54,11 @@ resource "kubernetes_secret_v1" "onepassword_token" {
   }
 
   # Must be >= 1 for data_wo to be written; must change for data_wo to be
-  # re-pushed on update. Derived from the token so rotation auto-bumps it.
-  data_wo_revision = nonsensitive(parseint(substr(sha256(var.onepassword_service_account_token), 0, 13), 16)) + 1
+  # re-pushed on update. Bump manually in variables.tf whenever the
+  # 1Password item's token value is rotated — see comment above.
+  data_wo_revision = var.onepassword_service_account_token_revision
 
   data_wo = {
-    token = var.onepassword_service_account_token
+    token = ephemeral.onepassword_item.eso_service_account_token.credential
   }
 }

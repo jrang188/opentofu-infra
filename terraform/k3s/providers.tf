@@ -1,5 +1,8 @@
 provider "hcloud" {
-  token = var.hcloud_token
+  # Ephemeral value from onepassword.tf: fetched fresh each phase, never
+  # written to state. See onepassword.tf for why the module's own
+  # hcloud_token *input variable* (kube.tf) still uses a plain data source.
+  token = ephemeral.onepassword_item.hcloud_token.credential
 }
 
 # Pointed at the kube-hetzner module's structured kubeconfig output — the same
@@ -14,4 +17,9 @@ provider "kubernetes" {
   client_certificate     = module.kube-hetzner.kubeconfig_data.client_certificate
   client_key             = module.kube-hetzner.kubeconfig_data.client_key
   cluster_ca_certificate = module.kube-hetzner.kubeconfig_data.cluster_ca_certificate
+}
+
+# Empty on purpose: authenticates via the local `op` CLI session (must be
+# signed in on the machine running tofu plan/apply). See onepassword.tf.
+provider "onepassword" {
 }
