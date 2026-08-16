@@ -74,7 +74,25 @@ module "kube-hetzner" {
       location    = "fsn1"
       labels      = []
       taints      = []
-      count       = 3
+      # Explicit `nodes` map instead of `count = 3`, so exactly one node can
+      # carry `floating_ip = true` (nodepool-level floating_ip applies to
+      # every node in the pool — one floating IP per node — which is not
+      # what a single stable ingress address needs). The composite state key
+      # this produces per node ("0-<n>-control-plane") is identical to what
+      # `count = 3` produces, so this is not a topology change: it does not
+      # replace the existing nodes (kube-hetzner locals.tf
+      # control_plane_nodes_from_maps_for_counts vs.
+      # control_plane_nodes_from_integer_counts).
+      nodes = {
+        "0" = {
+          # Stable public IPv4 that homelab-k8s's external-dns targets
+          # instead of any one node's own address, so DNS survives node
+          # replacement. See jrang188/homelab-k8s#9.
+          floating_ip = true
+        }
+        "1" = {}
+        "2" = {}
+      }
       # kube-hetzner hardcodes --accept-dns=false in the Tailscale bootstrap
       # script (locals.tf), but k3s etcd peer TLS requires MagicDNS for
       # hostname verification between control planes. This systemd unit
@@ -128,10 +146,14 @@ module "kube-hetzner" {
   # installing its own Traefik via HelmChartConfig — the documented upstream
   # convention for "I run my own ingress." See homelab-k8s ADR-0004.
   #
-  # Tradeoff: there is no stable public address. Every node has its own IP and
-  # replacing a node changes it, so DNS pointed at a node IP breaks on node
-  # replacement. Fine while nothing public depends on it — revisit before
-  # pointing a real domain here (a Floating IP or managed LB solves this).
+  # Every node still has its own public IP, and replacing a node changes it —
+  # Klipper listens on all local interfaces, so that's fine for direct access
+  # to a specific node, but DNS needs one address that outlives any single
+  # node. The control-plane floating IP above (nodes["0"].floating_ip) is that
+  # address: it stays reachable across node replacement because Terraform
+  # reassigns it to whatever server currently occupies that node slot. Point
+  # real domains (via homelab-k8s's external-dns) at the floating IP, not a
+  # node's own address.
   enable_klipper_metal_lb = true
   ingress_controller      = "none"
 
