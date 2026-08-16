@@ -19,7 +19,6 @@ provider "kubernetes" {
   cluster_ca_certificate = module.kube-hetzner.kubeconfig_data.cluster_ca_certificate
 }
 
-# Empty on purpose: authenticates via the local `op` CLI session (must be
-# signed in on the machine running tofu plan/apply). See onepassword.tf.
 provider "onepassword" {
+  account = "WAZ6QC3PINGPHPTDTK4UD6UGSI"
 }
