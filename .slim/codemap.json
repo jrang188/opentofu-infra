@@ -1,7 +1,7 @@
 {
   "metadata": {
     "version": "1.0.0",
-    "last_run": "2026-08-05T08:00:03.906Z",
+    "last_run": "2026-08-16T09:03:46.933Z",
     "root": "/Users/sirwayne/Developer/devops/opentofu-infra",
     "include_patterns": [
       "**/*"
@@ -10,27 +10,48 @@
     "exceptions": []
   },
   "file_hashes": {
-    ".gitignore": "36876fe7688c92778b460308c1a0a1d3",
+    ".gitignore": "dd90fca8fb26e96484502d8da112fd73",
     ".pre-commit-config.yaml": "3e24c84900c0fcaad7f623b22ff421de",
     ".tflint.hcl": "f36d495748fc5bc7fa7446f15ce70607",
-    "AGENTS.md": "e5dad4002db7461db1291847d109adeb",
-    "CLAUDE.md": "d9c1aa00474b45b2de5f587fe328cb8d",
-    "README.md": "331e94a296da1ed3a199659d359df781",
+    "AGENTS.md": "621cea11426ed6a58e293780068bb9bd",
+    "CLAUDE.md": "5c27369b226fcf2be8a6cfe52224e767",
+    "README.md": "5706e041d1ff429fbcc442124097a05b",
+    "codemap.md": "74d87a611f5e8fc97f757be40d713ca7",
+    "docs/agents/codemap.md": "c2585fb19d3123eb0b5c543a6438baef",
+    "docs/agents/domain.md": "35089ed6a70a657c91fd100ade31b642",
+    "docs/agents/issue-tracker.md": "bcc55d5bcb9418d73ca3cefc2af059d7",
+    "docs/agents/triage-labels.md": "22add54cb98451c55b20e6b7992d4a85",
+    "docs/codemap.md": "15d9b2293ae41530c5aa616145693126",
+    "docs/homelab-ecosystem.md": "685937042808329765ff5c3f74363dc9",
+    "docs/runbooks/README.md": "cb2d1a53399e113ab06946d934c5afa6",
+    "docs/runbooks/codemap.md": "8bf04ede65676b3d3011a72272d3d5cb",
+    "docs/runbooks/control-plane-join-timeout.md": "ba3455482f032d77a30e6901e4c42ac1",
+    "docs/runbooks/tailscale-ccm-uninitialized-taint.md": "a3868ec3465d2fe48cfce8ecba749951",
+    "docs/runbooks/tailscale-private-route-advertisement.md": "d02cdc9c10dbb81ac0a333dd1520f900",
     "skills-lock.json": "3e5618652875d1693b9a78d221d7c5bc",
-    "terraform/k3s/.terraform.lock.hcl": "8f13b059fbe65dd89513e03b09896842",
-    "terraform/k3s/kube.tf": "161b6a4434ecc2599c92bcedfd8cc7f8",
+    "terraform/codemap.md": "10d961d21e618eaecd762344232d967f",
+    "terraform/k3s/.terraform.lock.hcl": "4cda7abab20d383f2f54884824131c0a",
+    "terraform/k3s/codemap.md": "c9ce6df821339c82437cb472d525fbc6",
+    "terraform/k3s/kube.tf": "e73d7065a93e122bad177804665607e9",
+    "terraform/k3s/onepassword.tf": "03839cd773ad885f9646e00dbb76be0d",
     "terraform/k3s/outputs.tf": "25414e6a7ecdb66bd77c1731ca83b9ff",
+    "terraform/k3s/packer/codemap.md": "80b1e88df1421d2ce6a550be6044829e",
     "terraform/k3s/packer/hcloud-leapmicro-snapshots.pkr.hcl": "087891d84c5b943ec83901cb7f24122b",
     "terraform/k3s/packer/hcloud-microos-snapshots.pkr.hcl": "3fe7fa2a34fbd3e1447f55df69a19405",
-    "terraform/k3s/providers.tf": "5b7b2d35b2a366a5d86b6566d88e026d",
-    "terraform/k3s/terraform.tf": "3fb933ff0808c7e4750823562574bf93",
-    "terraform/k3s/terraform.tfvars.example": "ee2d01cb1c50557f298b9d83a9356a43",
-    "terraform/k3s/variables.tf": "cf5e5ed00879cb3a586cf3790e5dd113"
+    "terraform/k3s/providers.tf": "02a2fd568f0c2e41331bed3e403fecf4",
+    "terraform/k3s/secrets.tf": "ca0c7783bd97670f20fcf0f61be27472",
+    "terraform/k3s/terraform.tf": "04d73e888db2a016dac903941af8e956",
+    "terraform/k3s/terraform.tfvars": "ee28236134cf38ddbe6085d2ae51b4a6",
+    "terraform/k3s/terraform.tfvars.example": "0af66f2acbba62d522197791a790d790",
+    "terraform/k3s/variables.tf": "a156692498b109eda889477f2f7d179f"
   },
   "folder_hashes": {
-    ".": "a6e49be7a3b94f9b92f9bb6066e2040a",
-    "terraform": "81b15ce099b737a1597c847ad8824b7a",
-    "terraform/k3s": "81b15ce099b737a1597c847ad8824b7a",
-    "terraform/k3s/packer": "bec0010508a60a288221b7bfd7f47e30"
+    ".": "06f6f2dc14aa8458146e4989724ddb35",
+    "docs": "0af5dfea642596dd5d9b8e3fa92288ad",
+    "docs/agents": "2088cfc47ad237a99c9d2a995c4f590e",
+    "docs/runbooks": "293e2ff8e1afb03e6d5ddf93a3d2dfdf",
+    "terraform": "099b35c9dddee927ef40de0543a4eafc",
+    "terraform/k3s": "2e76324629b9b98a994e983d0b0ab287",
+    "terraform/k3s/packer": "480e7e5a0ce896450ce1564f06fd80f8"
   }
 }
