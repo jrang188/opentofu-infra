@@ -74,22 +74,19 @@ module "kube-hetzner" {
       location    = "fsn1"
       labels      = []
       taints      = []
-      # Explicit `nodes` map instead of `count = 3`, so exactly one node can
-      # carry `floating_ip = true` (nodepool-level floating_ip applies to
-      # every node in the pool — one floating IP per node — which is not
-      # what a single stable ingress address needs). The composite state key
-      # this produces per node ("0-<n>-control-plane") is identical to what
-      # `count = 3` produces, so this is not a topology change: it does not
-      # replace the existing nodes (kube-hetzner locals.tf
+      # Explicit `nodes` map instead of `count = 3`. This originally existed to
+      # put `floating_ip = true` on a single node; that attribute is gone (see
+      # floating_ip.tf for why the ingress address is owned outside the module
+      # now), so the map carries no per-node config and `count = 3` would be
+      # equivalent. It is kept as-is deliberately: the composite state key per
+      # node ("0-<n>-control-plane") is identical either way, so switching back
+      # is state-neutral but not behaviour-neutral — the two code paths differ
+      # in places (kube-hetzner locals.tf
       # control_plane_nodes_from_maps_for_counts vs.
-      # control_plane_nodes_from_integer_counts).
+      # control_plane_nodes_from_integer_counts), and there is nothing to gain
+      # from re-proving that against a live cluster.
       nodes = {
-        "0" = {
-          # Stable public IPv4 that homelab-k8s's external-dns targets
-          # instead of any one node's own address, so DNS survives node
-          # replacement. See jrang188/homelab-k8s#9.
-          floating_ip = true
-        }
+        "0" = {}
         "1" = {}
         "2" = {}
       }
@@ -149,11 +146,18 @@ module "kube-hetzner" {
   # Every node still has its own public IP, and replacing a node changes it —
   # Klipper listens on all local interfaces, so that's fine for direct access
   # to a specific node, but DNS needs one address that outlives any single
-  # node. The control-plane floating IP above (nodes["0"].floating_ip) is that
-  # address: it stays reachable across node replacement because Terraform
-  # reassigns it to whatever server currently occupies that node slot. Point
-  # real domains (via homelab-k8s's external-dns) at the floating IP, not a
-  # node's own address.
+  # node. That address is `hcloud_floating_ip.ingress` in floating_ip.tf, which
+  # is assigned to whatever server occupies the "0" control-plane slot. It is
+  # deliberately NOT the module's nodepool `floating_ip` attribute — that one
+  # is an egress primitive and drags `flannel-external-ip` along with it; read
+  # the header of floating_ip.tf before reaching for it. Point real domains
+  # (via homelab-k8s's external-dns) at the floating IP, not a node's own
+  # address.
+  #
+  # Note this trades availability for stability: the floating IP lives on one
+  # node, so it is a single point of failure where round-robin across three
+  # node IPs was not. A managed load balancer or an API-driven failover
+  # controller is the fix for that, and neither is in place yet.
   enable_klipper_metal_lb = true
   ingress_controller      = "none"
 
