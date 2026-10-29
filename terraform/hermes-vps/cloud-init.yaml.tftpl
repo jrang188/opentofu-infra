@@ -2,6 +2,11 @@
 # Rendered by terraform/hermes-vps/main.tf. Do not edit on the host: cloud-init
 # runs once, and the template is the record of what first boot did. Changes for
 # a running host belong in the runbook, not in a re-render.
+#
+# Ordering matters and is deliberate: everything local runs first, network
+# steps get retries, and ufw is enabled last — so a failed tailnet join leaves
+# the host with no open ports at all (the Hetzner firewall still permits only
+# ICMP and UDP/41641) rather than half-hardened. Recovery is the console.
 
 hostname: ${hostname}
 preserve_hostname: false
@@ -54,41 +59,40 @@ write_files:
       APT::Periodic::Update-Package-Lists "1";
       APT::Periodic::Unattended-Upgrade "1";
 
+  # The tailnet enrollment key is staged in a root-only file rather than being
+  # written inline into the bootstrap script. The script shreds it once the
+  # join succeeds, so it does not persist on disk.
+  #
+  # It is still visible in user_data via the instance metadata service
+  # (169.254.169.254) until the server is deleted, and to anyone with root on
+  # the box. Use a single-use, pre-authorised key and revoke it in the Tailscale
+  # admin console after first boot. See the README.
+  - path: /root/.tailscale-authkey
+    owner: root:root
+    permissions: "0600"
+    content: |
+      ${tailscale_authkey}
+
   - path: /usr/local/sbin/hermes-firstboot
     owner: root:root
-    permissions: "0755"
+    permissions: "0700"
     content: |
       #!/usr/bin/env bash
-      # Idempotent: safe to re-run by hand after a failed first boot.
+      # Idempotent: safe to re-run by hand after a failed first boot. Re-running
+      # resets ufw, so any hand-added rules have to be re-added afterwards.
       set -euo pipefail
 
-      # 1. Tailscale's apt repository. Version codename is read from the OS so
-      #    an image bump does not silently break the repo URL.
-      . /etc/os-release
-      install -d -m 0755 /usr/share/keyrings
-      curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$${VERSION_CODENAME}.noarmor.gpg" \
-        -o /usr/share/keyrings/tailscale-archive-keyring.gpg
-      curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$${VERSION_CODENAME}.tailscale-keyring.list" \
-        -o /etc/apt/sources.list.d/tailscale.list
-      apt-get update -y
-      DEBIAN_FRONTEND=noninteractive apt-get install -y tailscale
-      systemctl enable --now tailscaled
+      status=/var/lib/hermes-firstboot.status
+      echo "started $(date -u +%FT%TZ)" > "$status"
 
-      # 2. Join the tailnet. Tailscale SSH is intentionally NOT enabled here:
-      #    it has its own ACL model, and turning it on by default would grant
-      #    tailnet-initiated shell access before the ACLs are written.
-      tailscale up \
-        --auth-key="${tailscale_authkey}" \
-        --hostname="${hostname}" \
-        --accept-routes=false
-
-      # 3. Hermes state layout, preserved verbatim from the container:
-      #    HERMES_HOME=/opt/data and HOME=/opt/data/home. Thousands of absolute
-      #    paths in skills, scripts and cron prompts depend on this shape.
+      # ---- 1. Local, cannot fail on the network ----------------------------
+      # Hermes state layout, preserved verbatim from the container:
+      # HERMES_HOME=/opt/data and HOME=/opt/data/home. Thousands of absolute
+      # paths in skills, scripts and cron prompts depend on this shape.
       install -d -o ${hermes_user} -g ${hermes_user} -m 0750 ${hermes_home}
       install -d -o ${hermes_user} -g ${hermes_user} -m 0750 ${hermes_os_home}
 
-      # 4. Swapfile: cheap insurance, not a substitute for RAM.
+      # Swapfile: cheap insurance, not a substitute for RAM.
 %{ if swap_size_mb > 0 ~}
       if ! swapon --show | grep -q /swapfile; then
         fallocate -l ${swap_size_mb}M /swapfile
@@ -101,10 +105,57 @@ write_files:
       sysctl -q --system
 %{ endif ~}
 
-      # 5. Host firewall. Public ingress is already gated by the Hetzner
-      #    firewall; this is the second layer and the one that survives a
-      #    Hetzner-side mistake. Tailnet traffic arrives on tailscale0, so that
-      #    interface is trusted and nothing else is.
+      # SSH hardening takes effect before any network work, so a failure later
+      # still leaves a host that refuses password and root logins.
+      systemctl restart ssh
+      echo "ssh hardened" >> "$status"
+
+      # ---- 2. Tailscale repository + install (network, retried) ------------
+      . /etc/os-release
+      install -d -m 0755 /usr/share/keyrings
+      curl --retry 5 --retry-delay 5 --retry-connrefused -fsSL \
+        "https://pkgs.tailscale.com/stable/ubuntu/$${VERSION_CODENAME}.noarmor.gpg" \
+        -o /usr/share/keyrings/tailscale-archive-keyring.gpg
+      curl --retry 5 --retry-delay 5 --retry-connrefused -fsSL \
+        "https://pkgs.tailscale.com/stable/ubuntu/$${VERSION_CODENAME}.tailscale-keyring.list" \
+        -o /etc/apt/sources.list.d/tailscale.list
+      apt-get -o Acquire::Retries=5 update -y
+      DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=5 install -y tailscale
+      systemctl enable --now tailscaled
+      echo "tailscale installed" >> "$status"
+
+      # ---- 3. Join the tailnet --------------------------------------------
+      # Tailscale SSH is intentionally NOT enabled: it has its own ACL model,
+      # and turning it on by default would grant tailnet-initiated shell access
+      # before the ACLs are written.
+      joined=no
+      for attempt in 1 2 3 4 5; do
+        if tailscale up \
+          --auth-key="$(cat /root/.tailscale-authkey)" \
+          --hostname="${hostname}" \
+          --accept-routes=false; then
+          joined=yes
+          break
+        fi
+        echo "tailscale up attempt $attempt failed" >> "$status"
+        sleep 10
+      done
+      if [ "$joined" != "yes" ]; then
+        echo "FAILED: tailnet join" >> "$status"
+        echo "Tailnet join failed after 5 attempts. Fix network access, replace" >&2
+        echo "/root/.tailscale-authkey with a fresh key, and re-run this script." >&2
+        exit 1
+      fi
+      tailscale ip -4 >> "$status"
+      # The enrollment key has done its job; do not leave it on disk.
+      shred -u /root/.tailscale-authkey || rm -f /root/.tailscale-authkey
+      echo "tailnet joined" >> "$status"
+
+      # ---- 4. Host firewall (last) ----------------------------------------
+      # Public ingress is already gated by the Hetzner firewall; this is the
+      # second layer and the one that survives a Hetzner-side mistake. Tailnet
+      # traffic arrives on tailscale0, so that interface is trusted and nothing
+      # else is.
       ufw --force reset
       ufw default deny incoming
       ufw default allow outgoing
@@ -112,17 +163,15 @@ write_files:
       ufw allow 41641/udp
 %{ for cidr in bootstrap_ssh_cidrs ~}
       # TEMPORARY bootstrap SSH — remove bootstrap_ssh_cidrs once the tailnet
-      # path is verified.
+      # path is verified. This rule is NOT reconciled by a later apply: see the
+      # README's recovery section.
       ufw allow from ${cidr} to any port 22 proto tcp
 %{ endfor ~}
       ufw --force enable
 
-      # 6. Restart sshd so the hardening drop-in takes effect.
-      systemctl restart ssh
-
-      touch /var/lib/hermes-firstboot.done
+      echo "complete $(date -u +%FT%TZ)" >> "$status"
 
 runcmd:
   - /usr/local/sbin/hermes-firstboot
 
-final_message: "hermes-vps first boot complete after $UPTIME seconds; tailnet join attempted as ${hostname}"
+final_message: "hermes-vps first boot finished after $UPTIME seconds. Apply success is NOT host readiness — verify /var/lib/hermes-firstboot.status over the tailnet before trusting it."

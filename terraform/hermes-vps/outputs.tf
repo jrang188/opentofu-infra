@@ -19,6 +19,11 @@ output "workspace" {
 }
 
 output "ssh_hint" {
-  description = "How to reach the box. Public SSH is closed unless bootstrap_ssh_cidrs is set."
-  value       = "ssh ${local.hermes_user}@${local.name}   # over the tailnet; the public IPv4 accepts no TCP/22"
+  description = "How to reach the box. Public SSH is closed unless both the Hetzner rule (bootstrap_ssh_cidrs) and a ufw rule are opened — see the README's recovery section."
+  value       = "ssh ${local.hermes_user}@${local.name}   # over the tailnet; the public IPv4 accepts no TCP/22 by default"
+}
+
+output "firstboot_status_hint" {
+  description = "apply success is not host readiness. cloud-init runs after Hetzner's actions complete; check this before trusting a deployment."
+  value       = "ssh ${local.hermes_user}@${local.name} 'cat /var/lib/hermes-firstboot.status'"
 }

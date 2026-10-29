@@ -1,16 +1,22 @@
 # ---------------------------------------------------------------------------
 # Hermes VPS: one Ubuntu box that runs the always-on gateway and nothing else.
 # ---------------------------------------------------------------------------
-# Ownership boundary: this root provisions compute + network + first-boot
-# configuration. It does NOT install Hermes (that is a reviewed, documented
-# step: see the sync'd plan), does not touch R2, and does not manage anything
-# inside the homelab. Keeping the boundary here means `tofu destroy` can never
-# remove state the gateway is holding.
+# Ownership boundary: this root provisions compute + network + first boot. It
+# does NOT install Hermes, and does not touch R2 or the homelab. That keeps
+# *code* from changing the running agent's runtime.
+#
+# It does NOT make `tofu destroy` harmless: destroying this root deletes the
+# server and therefore the disk holding HERMES_HOME. Two explicit protections
+# stand in the way, and both must be removed deliberately before a teardown can
+# happen:
+#   1. lifecycle.prevent_destroy on the server and the firewall
+#   2. delete_protection on the server, enforced by the Hetzner API
+# Decommissioning is a reviewed sequence, not a `destroy` away.
 #
 # Workspace-as-name: the OpenTofu workspace selects the deployment, so
 # `tofu workspace new hermes-vps` yields a server called `hermes-vps` with its
-# own state file under terraform.tfstate.d/hermes-vps/. The default workspace
-# is refused — planning there would silently create `default`.
+# own state file under terraform.tfstate.d/hermes-vps/. The default workspace is
+# refused — planning there would silently create `default`.
 
 locals {
   onepassword_vault = "Development"
@@ -32,20 +38,44 @@ locals {
   }
 }
 
+# --- Encryption guard ------------------------------------------------------
+# State encryption is configured through TF_ENCRYPTION (see terraform.tf). The
+# environment form is what keeps `tofu init`/`validate` secret-free, but it also
+# means a fresh workspace would write *plaintext* state if the operator forgot
+# to source env.sh. This guard closes that hole for apply: it runs before
+# anything else and aborts if the variable is missing.
+#
+# Residual gap, stated rather than hidden: `tofu plan -out=FILE` with no
+# TF_ENCRYPTION still produces an unencrypted plan file. Don't pass -out
+# without sourcing env.sh; plan files are gitignored but not secret-safe.
+
+resource "terraform_data" "encryption_guard" {
+  # Replace every run so the provisioner executes on each apply, not only on
+  # first creation.
+  triggers_replace = timestamp()
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      if [ -z "$${TF_ENCRYPTION:-}" ]; then
+        echo "ERROR: TF_ENCRYPTION is not set — state would be written unencrypted." >&2
+        echo "       Run: source terraform/hermes-vps/env.sh" >&2
+        exit 1
+      fi
+    EOT
+  }
+}
+
 # --- 1Password-sourced material -------------------------------------------
-# Ephemeral where the value is only ever handed to a provider; plain data
-# source for the SSH public key and tailnet auth key because cloud-init is a
-# persisted resource attribute (so the value lands in encrypted state rather
-# than in the repo).
+# Ephemeral where the value is only ever handed to a provider. The SSH public
+# key is NOT read through a data source on purpose: `onepassword_item` data
+# sources persist every attribute of the item — including its private key —
+# into state. A public key is not a secret, so env.sh passes it as TF_VAR
+# instead. The tailnet enrollment key does have to reach cloud-init, so it is
+# unavoidably in (encrypted) state and in user_data; see the README.
 
 ephemeral "onepassword_item" "hcloud_token" {
   vault = local.onepassword_vault
   title = "hetzner-cloud-api-token"
-}
-
-data "onepassword_item" "ssh_key" {
-  vault = local.onepassword_vault
-  title = "ssh-key"
 }
 
 data "onepassword_item" "tailscale" {
@@ -53,16 +83,8 @@ data "onepassword_item" "tailscale" {
   title = "tailscale-auth-key"
 }
 
-# --- SSH key ---------------------------------------------------------------
-
-resource "hcloud_ssh_key" "hermes" {
-  name       = "${local.name}-ed25519"
-  public_key = data.onepassword_item.ssh_key.public_key
-  labels     = local.labels
-}
-
 # --- Firewall --------------------------------------------------------------
-# Ingress is deliberately three rules wide.
+# Ingress is deliberately two rules wide, plus an opt-in third.
 #
 # Note on tailnet SSH: a Tailscale SSH/SCP connection does not arrive as
 # inbound TCP/22 on eth0 — it arrives as WireGuard UDP on 41641. Allowing
@@ -99,6 +121,12 @@ resource "hcloud_firewall" "hermes" {
       source_ips  = var.bootstrap_ssh_cidrs
     }
   }
+
+  lifecycle {
+    # Removing the management network is part of a decommission, not a side
+    # effect of an unrelated change.
+    prevent_destroy = true
+  }
 }
 
 # --- Server ----------------------------------------------------------------
@@ -108,11 +136,20 @@ resource "hcloud_server" "hermes" {
   server_type = var.server_type
   image       = var.image
   location    = var.location
-  ssh_keys    = [hcloud_ssh_key.hermes.id]
   labels      = local.labels
   firewall_ids = [
     hcloud_firewall.hermes.id,
   ]
+
+  # API-level protection: a delete call fails until this is turned off
+  # deliberately. Belt to lifecycle.prevent_destroy's braces.
+  delete_protection = var.delete_protection
+
+  # No project SSH key is attached. Creating one would collide with any key
+  # already registered in the project (Hetzner enforces fingerprint
+  # uniqueness) and would tie this root's lifecycle to a shared object. The
+  # public key is installed for the `hermes` user by cloud-init instead; the
+  # console/rescue path is documented in the README.
 
   public_net {
     ipv4_enabled = true
@@ -124,13 +161,20 @@ resource "hcloud_server" "hermes" {
     hermes_user         = local.hermes_user
     hermes_home         = local.hermes_home
     hermes_os_home      = local.hermes_os_home
-    ssh_public_key      = trimspace(data.onepassword_item.ssh_key.public_key)
+    ssh_public_key      = trimspace(var.ssh_public_key)
     tailscale_authkey   = trimspace(data.onepassword_item.tailscale.credential)
     swap_size_mb        = var.swap_size_mb
     bootstrap_ssh_cidrs = var.bootstrap_ssh_cidrs
   })
 
+  depends_on = [terraform_data.encryption_guard]
+
   lifecycle {
+    # Destroying this resource removes the disk holding HERMES_HOME. Make that
+    # a deliberate two-step: remove this block, follow the decommission
+    # runbook, then destroy.
+    prevent_destroy = true
+
     # The default workspace is not a deployment target: it would create a
     # server named "default" whose state nobody accounts for.
     precondition {

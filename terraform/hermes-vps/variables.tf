@@ -36,13 +36,41 @@ variable "enable_ipv6" {
   default     = false
 }
 
+variable "ssh_public_key" {
+  description = <<-EOT
+    Public key installed for the `hermes` user by cloud-init. No default: it is
+    supplied by env.sh as TF_VAR_ssh_public_key. Deliberately a variable rather
+    than a 1Password data source — an `onepassword_item` data source persists
+    every attribute of the item, private key included, into state.
+  EOT
+  type        = string
+  nullable    = false
+
+  validation {
+    condition     = can(regex("^ssh-(ed25519|rsa|ecdsa)[^\\n]+$", trimspace(var.ssh_public_key)))
+    error_message = "ssh_public_key must be a single OpenSSH public key line (ssh-ed25519 / ssh-rsa / ssh-ecdsa)."
+  }
+}
+
+variable "delete_protection" {
+  description = <<-EOT
+    Hetzner API-level delete protection on the server. Leave on: a destroy here
+    deletes the disk holding the gateway's state. Decommissioning means turning
+    this off deliberately and following the runbook, not running `tofu destroy`.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "bootstrap_ssh_cidrs" {
   description = <<-EOT
-    Source CIDRs allowed to reach TCP/22. Empty by default — SSH arrives over
-    the tailnet once cloud-init has joined the tailnet, so no public SSH is
-    needed. Set this only for first-boot recovery, and remove it afterwards.
-    If the tailnet join fails you still have the Hetzner web console, which
-    does not pass through the firewall.
+    Source CIDRs allowed to reach TCP/22, used only for first-boot recovery.
+    Empty by default — SSH arrives over the tailnet once cloud-init has joined,
+    so no public SSH is needed.
+
+    Caveat: cloud-init runs once, and user_data is ignore_changes'd, so changing
+    this variable later only updates the Hetzner firewall. The host's own ufw
+    rule must be added and removed by hand (see the README's recovery section).
   EOT
   type        = list(string)
   default     = []
