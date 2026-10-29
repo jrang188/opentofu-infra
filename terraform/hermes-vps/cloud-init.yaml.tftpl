@@ -1,0 +1,128 @@
+#cloud-config
+# Rendered by terraform/hermes-vps/main.tf. Do not edit on the host: cloud-init
+# runs once, and the template is the record of what first boot did. Changes for
+# a running host belong in the runbook, not in a re-render.
+
+hostname: ${hostname}
+preserve_hostname: false
+manage_etc_hosts: true
+timezone: UTC
+
+package_update: true
+# Release upgrades stay manual. Security patches arrive via unattended-upgrades
+# below, which is the split the plan asks for.
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - jq
+  - restic
+  - ufw
+  - unattended-upgrades
+
+users:
+  - name: ${hermes_user}
+    homedir: ${hermes_os_home}
+    shell: /bin/bash
+    lock_passwd: true
+    # No sudo: the service account is unprivileged by design. Anything
+    # privileged is a documented, reviewed step, not an agent-executable one.
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+ssh_pwauth: false
+disable_root: true
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-hardening.conf
+    owner: root:root
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      AllowUsers ${hermes_user}
+
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root:root
+    permissions: "0644"
+    content: |
+      # Security updates only, unattended. Release upgrades are a reviewed,
+      # reboot-planned operation — see the runbook.
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+  - path: /usr/local/sbin/hermes-firstboot
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      # Idempotent: safe to re-run by hand after a failed first boot.
+      set -euo pipefail
+
+      # 1. Tailscale's apt repository. Version codename is read from the OS so
+      #    an image bump does not silently break the repo URL.
+      . /etc/os-release
+      install -d -m 0755 /usr/share/keyrings
+      curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$${VERSION_CODENAME}.noarmor.gpg" \
+        -o /usr/share/keyrings/tailscale-archive-keyring.gpg
+      curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$${VERSION_CODENAME}.tailscale-keyring.list" \
+        -o /etc/apt/sources.list.d/tailscale.list
+      apt-get update -y
+      DEBIAN_FRONTEND=noninteractive apt-get install -y tailscale
+      systemctl enable --now tailscaled
+
+      # 2. Join the tailnet. Tailscale SSH is intentionally NOT enabled here:
+      #    it has its own ACL model, and turning it on by default would grant
+      #    tailnet-initiated shell access before the ACLs are written.
+      tailscale up \
+        --auth-key="${tailscale_authkey}" \
+        --hostname="${hostname}" \
+        --accept-routes=false
+
+      # 3. Hermes state layout, preserved verbatim from the container:
+      #    HERMES_HOME=/opt/data and HOME=/opt/data/home. Thousands of absolute
+      #    paths in skills, scripts and cron prompts depend on this shape.
+      install -d -o ${hermes_user} -g ${hermes_user} -m 0750 ${hermes_home}
+      install -d -o ${hermes_user} -g ${hermes_user} -m 0750 ${hermes_os_home}
+
+      # 4. Swapfile: cheap insurance, not a substitute for RAM.
+%{ if swap_size_mb > 0 ~}
+      if ! swapon --show | grep -q /swapfile; then
+        fallocate -l ${swap_size_mb}M /swapfile
+        chmod 600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+      fi
+      grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf
+      sysctl -q --system
+%{ endif ~}
+
+      # 5. Host firewall. Public ingress is already gated by the Hetzner
+      #    firewall; this is the second layer and the one that survives a
+      #    Hetzner-side mistake. Tailnet traffic arrives on tailscale0, so that
+      #    interface is trusted and nothing else is.
+      ufw --force reset
+      ufw default deny incoming
+      ufw default allow outgoing
+      ufw allow in on tailscale0
+      ufw allow 41641/udp
+%{ for cidr in bootstrap_ssh_cidrs ~}
+      # TEMPORARY bootstrap SSH — remove bootstrap_ssh_cidrs once the tailnet
+      # path is verified.
+      ufw allow from ${cidr} to any port 22 proto tcp
+%{ endfor ~}
+      ufw --force enable
+
+      # 6. Restart sshd so the hardening drop-in takes effect.
+      systemctl restart ssh
+
+      touch /var/lib/hermes-firstboot.done
+
+runcmd:
+  - /usr/local/sbin/hermes-firstboot
+
+final_message: "hermes-vps first boot complete after $UPTIME seconds; tailnet join attempted as ${hostname}"

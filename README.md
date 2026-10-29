@@ -184,3 +184,31 @@ access and is the slowest hook. Later runs reuse the cached `.terraform/`.
   [`docs/runbooks/control-plane-join-timeout.md`](docs/runbooks/control-plane-join-timeout.md).
 - `packer/hcloud-microos-snapshots.pkr.hcl` is unused — this cluster runs Leap
   Micro. It is kept only for reference.
+
+## `terraform/hermes-vps` — Hermes gateway VPS
+
+A single Ubuntu box that runs the always-on Hermes gateway natively. **Fully
+independent of `terraform/k3s`**: separate directory, separate state, separate
+lifetime. Nothing here imports, references or mutates the cluster.
+
+| | |
+|---|---|
+| Server | 1 × `cx33` in `fsn1`, Ubuntu 24.04 LTS |
+| Access | Tailscale only; public IPv4 accepts ICMP and WireGuard (UDP/41641) |
+| State | Local, **encrypted** (`TF_ENCRYPTION`, passphrase in 1Password) |
+| Cost | ~€6.99/month |
+
+```bash
+cd terraform/hermes-vps
+source env.sh                    # exports TF_ENCRYPTION from 1Password
+tofu init && tofu workspace new hermes-vps
+tofu plan                        # workspace name selects the deployment name
+```
+
+The workspace **is** the deployment: `tofu workspace new hermes-vps` creates a
+server called `hermes-vps` with its own state under
+`terraform.tfstate.d/hermes-vps/`, and the `default` workspace is refused by a
+precondition. See [`terraform/hermes-vps/README.md`](terraform/hermes-vps/README.md)
+for first-boot behaviour, recovery, and the scope boundary (this root does not
+install Hermes and does not provision R2).
+
