@@ -1,101 +1,101 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "debug-node": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/debug-node/SKILL.md",
-      "computedHash": "7b73115f75c93acaf549e92f967b6077c109770196aa228b9b664434f632be9c"
+      "computedHash": "0c49da48037da995fe96fe20d33233454c5c7515181af94e3de934fb1403b0da"
     },
     "fix-issue": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/fix-issue/SKILL.md",
-      "computedHash": "7d719ffdcf2ae4a3c073c65bbcbadbffc45b5488b6d16ab58ee380140eedd8e2"
+      "computedHash": "8b8e266b5ab79ec41215a2b03002c94440fa93ab6c1fa4a708697980e57e5fcd"
     },
     "kh-assistant": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/kh-assistant/SKILL.md",
-      "computedHash": "732deb1a080755883155c9c197aa6d88ba1bd1038bf8685a978b6a37b0afd915"
+      "computedHash": "62ae0593012e3dffde87ac21a585db50605cf89bf7f1aa9ef1bd797128e548d9"
     },
     "migrate-v2-to-v3": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/migrate-v2-to-v3/SKILL.md",
-      "computedHash": "22cdda417db22eb02ad715b7a22c8cd6b55775160cac8b9efc9fbcefa48139cf"
+      "computedHash": "05a71d88c3072546f32066ee98b3b72065b9bff8439bf1d37a5d702112f51549"
     },
     "prepare-release": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/prepare-release/SKILL.md",
-      "computedHash": "8bf5d5a3eb0d51b16b4f5779ed2cdf0006ab8786732e6006e353ce01221753a8"
+      "computedHash": "6ce4bc2beac7e6ae5a186f30177a8b7bbe0e84399bd9ffeacfbb3b6280989cc5"
     },
     "refactor-module": {
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "plugins/terraform/skills/refactor-module/SKILL.md",
-      "computedHash": "c1b3ff4df68484f41d14f49f275a2f5c22abb5b03dc6b3cc10ce09d718014e2f"
+      "computedHash": "64ebe229f5556a162308cbdf7c240d36de58dd2a0106734fa23f946a2c83864d"
     },
     "review-pr": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/review-pr/SKILL.md",
-      "computedHash": "dee76d80bc2704d3fb989c81df16874c14a7a3bda2f82107df753012c4d5e9ae"
+      "computedHash": "f02a5d563d043a1dc8fa689479913e2020db521d71b7d5a1b481054206b35df8"
     },
     "running-stabilization-loop": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/running-stabilization-loop/SKILL.md",
-      "computedHash": "cd4181b41b29bc48e241882b37d6e9ecf674a2804948b2ad26130f92a91d2612"
+      "computedHash": "6741d18e876bc2a8d8ffb44717f69e1bd63c9a2fbe8e84d2ad712c2fade8c2f0"
     },
     "sync-docs": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/sync-docs/SKILL.md",
-      "computedHash": "a7f9aaa9bbb56219bd467eb3b504bcf8b735bd1e52ba8e49fca1aa6baa8af689"
+      "computedHash": "c32fe13b6e35902cde6f4e1d2fdee40446b25b13cc6a762dfbe0fc056c453578"
     },
     "terraform-search-import": {
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "plugins/terraform/skills/terraform-search-import/SKILL.md",
-      "computedHash": "4957a6b44f879a318929303d282899790d275ec4e15b33b2004b699a0dac91ce"
+      "computedHash": "7108fbb27c4cf308b4b01c1ca00d20d10c61a0efb9b2d0d4eeea24f0b3255a0e"
     },
     "terraform-skill": {
       "source": "antonbabenko/terraform-skill",
       "sourceType": "github",
       "skillPath": "skills/terraform-skill/SKILL.md",
-      "computedHash": "2fbcf60b149bd4ed5a31c82b799b15fe955138238a3f68ec697605d994cb9234"
+      "computedHash": "6366eb4dae431c0eca0c9714447a6ff9ab7fe658eae1f7e0608b5e4141e64c02"
     },
     "terraform-style-guide": {
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "plugins/terraform/skills/terraform-style-guide/SKILL.md",
-      "computedHash": "3b914c5ae01a7101d45b5222fbc38e0be6eb7412deba5f54d471905f22af70c6"
+      "computedHash": "39a686ad7d71d99e5fbead0a5cbd666c096af8d38d152f7597eb314e5b2b622c"
     },
     "terraform-test": {
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "plugins/terraform/skills/terraform-test/SKILL.md",
-      "computedHash": "2d69da79a8e714dbdfee4c9a6b323cf33cef89e6b6dcee154d6b3009814c7240"
+      "computedHash": "8c66c1856320d5b74eb54b89f9c2553ff7e5733bfc08135edd922830287d0c0f"
     },
     "test-changes": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/test-changes/SKILL.md",
-      "computedHash": "7ad3178c1b6f908876ca3a7239797f5ba3c4df56131e9bc89c06a4f47605c60c"
+      "computedHash": "2fea540c5894bfdd95befe2efefbfa287beac27e124af018aa37a0d41c8d3788"
     },
     "triage-issue": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/triage-issue/SKILL.md",
-      "computedHash": "7e689f81cbb899e5b1b7a1f3fe7fc42563966452de2c67b6f7861cd765a9d769"
+      "computedHash": "80597d3fb535e813d8e30d848c4983dc958f46dc2996870bcf5032c1ec525826"
     },
     "upgrade-cluster": {
       "source": "kube-hetzner/terraform-hcloud-kube-hetzner",
       "sourceType": "github",
       "skillPath": ".claude/skills/upgrade-cluster/SKILL.md",
-      "computedHash": "5b19d862a4337d8b3a5ffef1d579a2cb266a00fbc0000bc116849bee9bfcdebb"
+      "computedHash": "6500927333d0057f6bddf7d407d57d5855c231261ca611ebf6f9145ffc32e399"
     }
   }
 }
