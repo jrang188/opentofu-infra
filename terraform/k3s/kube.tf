@@ -133,6 +133,17 @@ module "kube-hetzner" {
   # stays and nothing can schedule anywhere.
   allow_scheduling_on_control_plane = true
 
+  # The cluster also contains a physical home node (homelab-nix), which
+  # cannot be found in the Hetzner API. The cloud lifecycle controller
+  # deleted it after a connectivity interruption on 2026-09-27. Keep node
+  # initialization enabled, but disable cloud-driven deletion/shutdown
+  # handling; retired Hetzner Node objects require manual cleanup.
+  hetzner_ccm_merge_values = yamlencode({
+    args = {
+      controllers = "*,-cloud-node-lifecycle"
+    }
+  })
+
   # ---------------------------------------------------------------------------
   # Ingress: Klipper on node public IPs, Traefik owned by homelab-k8s
   # ---------------------------------------------------------------------------

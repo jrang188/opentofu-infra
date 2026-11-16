@@ -163,6 +163,18 @@ access and is the slowest hook. Later runs reuse the cached `.terraform/`.
   before pointing a real domain here.
 - **`allow_scheduling_on_control_plane` must stay `true`.** With zero agent
   nodepools it is the only thing that lets workloads schedule at all.
+- **Keep the Hetzner CCM's `cloud-node-lifecycle` controller disabled.** The
+  physical `k3s-agent-hml` node is not a Hetzner server. On 2026-09-27, an API
+  connectivity interruption caused the controller to delete its Kubernetes
+  Node object because it could not find the machine in Hetzner. The
+  `hetzner_ccm_merge_values` override in `terraform/k3s/kube.tf` prevents this
+  while retaining cloud-node initialization. This disables cloud-driven node
+  deletion and shutdown handling cluster-wide; clean up retired Hetzner Node
+  objects manually. If the home Node has already disappeared, first verify
+  the CCM is running with `--controllers=*,-cloud-node-lifecycle`, then restart
+  `k3s.service` on the home machine to trigger registration. Verify the node
+  becomes Ready with `topology.kubernetes.io/zone=home` and its workloads
+  recover using their existing PVCs.
 - **Do not downgrade below module v3.0.1.** v3.0.0 fails later plans on
   zero-agent clusters (kube-hetzner#2236 / #2238).
 - **Tailscale + CCM leaves nodes with the `node.cloudprovider.kubernetes.io/uninitialized`
