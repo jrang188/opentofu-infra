@@ -1,9 +1,11 @@
 # AGENTS.md
 
 Repo: personal OpenTofu infra for a single Hetzner k3s cluster via the
-`kube-hetzner` v3.0.1 module. One live root module: `terraform/k3s/`.
-The README is the source of truth for setup, teardown, and operational
-caveats — do not duplicate it here.
+`kube-hetzner` v3.0.1 module, plus a standalone tailnet-only Hetzner VM
+for the hermes agent. Two live root modules: `terraform/k3s/` (the
+cluster) and `terraform/hermes/` (the VM, independent state, no
+cluster dependency). The README is the source of truth for setup,
+teardown, and operational caveats — do not duplicate it here.
 
 ## Tooling
 

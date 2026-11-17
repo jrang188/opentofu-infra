@@ -196,3 +196,68 @@ access and is the slowest hook. Later runs reuse the cached `.terraform/`.
   [`docs/runbooks/control-plane-join-timeout.md`](docs/runbooks/control-plane-join-timeout.md).
 - `packer/hcloud-microos-snapshots.pkr.hcl` is unused — this cluster runs Leap
   Micro. It is kept only for reference.
+
+## `terraform/hermes` — hermes agent VM
+
+A single standalone Hetzner Cloud VM (`cx22`, `ubuntu-24.04`, `fsn1` by
+default) for the always-on "hermes agent" daemon. Independent root module with
+its own state — it does not read the cluster's state or kubeconfig and can be
+applied in any order relative to `terraform/k3s`.
+
+| | |
+|---|---|
+| Access | Tailscale only. The hcloud firewall has zero rules, so there is no public inbound on any port |
+| SSH | Tailscale SSH (`ssh hermes.<magicdns-domain>`); the operator's public key is also registered with Hetzner as a fallback |
+| Agent install | **Out of scope for Terraform.** Provisioning stops at "VM exists and is on the tailnet" |
+
+### Prerequisites
+
+1. **OpenTofu `~> 1.12`**, an `op` CLI session (all secrets come from
+   1Password via the provider; nothing on disk), and the machine must be
+   logged in to the same tailnet to reach the VM afterwards.
+2. **A dedicated Tailscale auth key for this node.** It must be **reusable and
+   non-ephemeral** — ephemeral keys reap nodes when they go offline, which would
+   kill the VM's tailnet identity — and must be created tagged `tag:hermes`.
+   Create it in the Tailscale admin console, then add `tag:hermes` to
+   `tagOwners` in the Tailnet ACL policy, and store the key in the 1Password
+   `Development` vault under the title `tailscale-auth-key-hermes`.
+   Do not reuse the cluster's `tailscale-auth-key`: its tag
+   (`tag:k8s-control-plane`) is fixed at creation.
+3. **The `ssh-key` item in the `Development` vault** (its `public_key` field),
+   same item the cluster uses.
+
+### Usage
+
+```bash
+cp terraform/hermes/terraform.tfvars.example terraform/hermes/terraform.tfvars
+```
+
+Fill in `tailscale_magicdns_domain` (Tailscale admin console > DNS); the
+sizing defaults are fine. Then:
+
+```bash
+cd terraform/hermes
+tofu init
+tofu plan -out=hermes.tfplan
+tofu apply hermes.tfplan
+```
+
+The auth key appears in the plan under `hcloud_server.hermes.user_data` — it is
+passed to cloud-init, so it is unavoidably readable in state, same exposure the
+cluster root accepts.
+
+Verify and connect:
+
+```bash
+tailscale status | grep hermes
+ssh hermes.tailXXXX.ts.net
+```
+
+Teardown: `tofu destroy` from `terraform/hermes` — nothing in the cluster
+references this VM, so no ordering constraints.
+
+Installing the hermes agent on the VM is a manual follow-up, not a Terraform
+concern. The VM's only Terraform-guaranteed properties are: it exists, it has no
+public ingress, and it is enrolled in the tailnet as `tag:hermes` with MagicDNS
+and Tailscale SSH on.
+

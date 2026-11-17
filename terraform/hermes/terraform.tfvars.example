@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and fill in. No secrets — everything comes from
+# 1Password via the onepassword provider.
+
+hermes_server_name   = "hermes"
+hermes_server_type   = "cx22"
+hermes_location      = "fsn1"
+hermes_image         = "ubuntu-24.04"
+hermes_tailscale_tag = "tag:hermes"
+
+# Your Tailnet's MagicDNS domain — Tailscale admin console > DNS.
+tailscale_magicdns_domain = "tailXXXX.ts.net"

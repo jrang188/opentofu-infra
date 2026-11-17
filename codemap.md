@@ -2,18 +2,23 @@
 
 ## Project Responsibility
 
-Personal OpenTofu infra for a single Hetzner Cloud k3s cluster,
-built on the `kube-hetzner` v3.0.1 community module. One live root
-module (`terraform/k3s/`), 3-node control-plane shape, zero agent
-nodes, Tailscale-only management, Klipper on node public IPs for
-ingress, no storage. No CI; all validation runs locally through
-pre-commit. One of three cooperating homelab repos (with `homelab-nix`
-and `homelab-k8s`) — see `docs/homelab-ecosystem.md`.
+Personal OpenTofu infra for a home homelab: a single Hetzner Cloud k3s
+cluster, built on the `kube-hetzner` v3.0.1 community module, plus a
+standalone Hetzner VM for the always-on hermes agent. Two live root
+modules (`terraform/k3s/`, `terraform/hermes/`), independent state,
+3-node control-plane shape, zero agent nodes, Tailscale-only
+management, Klipper on node public IPs for ingress, no storage. No CI;
+all validation runs locally through pre-commit. One of three
+cooperating homelab repos (with `homelab-nix` and `homelab-k8s`) — see
+`docs/homelab-ecosystem.md`.
 
 ## System Entry Points
 
 - `terraform/k3s/kube.tf` — the only `module "kube-hetzner"` call in
   the repo.
+- `terraform/hermes/hermes.tf` — the hermes-agent VM: firewall, SSH key
+  registration, and cloud-init tailnet enrolment (no cluster/provider
+  dependency).
 - `terraform/k3s/onepassword.tf` — all secret sourcing (hcloud token,
   SSH keys, Tailscale auth key, ESO bootstrap token) via the
   `onepassword` provider; replaces `.env.tofu`/`TF_VAR_*` env vars.
@@ -44,8 +49,9 @@ and `homelab-k8s`) — see `docs/homelab-ecosystem.md`.
 | Directory | Responsibility Summary | Detailed Map |
 |---|---|---|
 | `terraform/k3s/` | Live OpenTofu root module: single `kube-hetzner` v3.0.1 call, 3-node zero-agent cluster, Tailscale transport, 1Password-sourced secrets, ESO bootstrap Secret, Klipper ingress. | [View Map](terraform/k3s/codemap.md) |
+| `terraform/hermes/` | Second live root module: one standalone Hetzner VM for the hermes agent, tailnet-only access, cloud-init Tailscale enrolment. No cluster dependency. | [View Map](terraform/hermes/codemap.md) |
 | `terraform/k3s/packer/` | Builds the Leap Micro Hetzner snapshot the cluster module requires. Two templates live here; only the Leap Micro one is wired in. | [View Map](terraform/k3s/packer/codemap.md) |
-| `terraform/` | Namespace container; one live root (`k3s/`). | [View Map](terraform/codemap.md) |
+| `terraform/` | Namespace container; two independent live roots (`k3s/`, `hermes/`). | [View Map](terraform/codemap.md) |
 | `docs/` | Ecosystem doc (three-repo contracts), agent-session conventions, and operational runbooks. | [View Map](docs/codemap.md) |
 | `docs/agents/` | Conventions for AI/agent sessions: domain docs, issue tracker, triage labels. | [View Map](docs/agents/codemap.md) |
 | `docs/runbooks/` | Operational recovery procedures (CCM taint, join timeout, Tailscale routes). | [View Map](docs/runbooks/codemap.md) |
