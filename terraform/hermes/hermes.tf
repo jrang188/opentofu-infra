@@ -11,13 +11,13 @@ resource "hcloud_firewall" "hermes" {
   name = "${var.hermes_server_name}-tailnet-only"
 }
 
-# --- SSH key: fallback for direct tailnet SSH ------------------------------
-# Tailscale SSH (below) is the primary path; the operator's key is registered
-# as a backup.
+# --- SSH key: reference the project's existing key --------------------------
+# Hetzner rejects duplicate keys per project (uniqueness_error), and the k3s
+# root already registered the operator's key. Look it up instead of creating
+# a second copy. Update the fingerprint if the key is ever rotated.
 
-resource "hcloud_ssh_key" "hermes" {
-  name       = var.hermes_server_name
-  public_key = data.onepassword_item.ssh_key.public_key
+data "hcloud_ssh_key" "hermes" {
+  fingerprint = var.hermes_ssh_key_fingerprint
 }
 
 # --- The VM ----------------------------------------------------------------
@@ -28,7 +28,7 @@ resource "hcloud_server" "hermes" {
   image       = var.hermes_image
   location    = var.hermes_location
 
-  ssh_keys     = [hcloud_ssh_key.hermes.id]
+  ssh_keys     = [data.hcloud_ssh_key.hermes.id]
   firewall_ids = [hcloud_firewall.hermes.id]
 
   labels = {

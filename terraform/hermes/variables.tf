@@ -63,6 +63,19 @@ variable "hermes_tailscale_tag" {
   nullable = false
 }
 
+variable "hermes_ssh_key_fingerprint" {
+  description = "MD5 fingerprint of the SSH key already registered in the Hetzner project (the k3s key), e.g. 07:df:c7:40:85:83:9c:b1:c0:01:05:8a:f9:7b:f8:db."
+  type        = string
+  default     = "07:df:c7:40:85:83:9c:b1:c0:01:05:8a:f9:7b:f8:db"
+
+  validation {
+    condition     = can(regex("^([0-9a-f]{2}:){15}[0-9a-f]{2}$", var.hermes_ssh_key_fingerprint))
+    error_message = "hermes_ssh_key_fingerprint must be a colon-separated MD5 fingerprint."
+  }
+
+  nullable = false
+}
+
 variable "tailscale_magicdns_domain" {
   description = "The Tailnet's MagicDNS domain, e.g. \"tail1234.ts.net\". Found in the Tailscale admin console under DNS."
   type        = string

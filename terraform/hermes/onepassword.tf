@@ -14,11 +14,6 @@ ephemeral "onepassword_item" "hcloud_token" {
 
 # --- VM access + tailnet enrolment (plain data sources) --------------------
 
-data "onepassword_item" "ssh_key" {
-  vault = local.onepassword_vault
-  title = "ssh-key"
-}
-
 data "onepassword_item" "tailscale_auth_key" {
   vault = local.onepassword_vault
   title = "tailscale-auth-key-hermes"
