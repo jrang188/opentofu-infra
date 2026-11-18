@@ -38,15 +38,13 @@ resource "hcloud_server" "hermes" {
 
   # cloud-init: install tailscale and enrol in the tailnet on first boot.
   # --ssh = Tailscale SSH; --accept-dns=true = MagicDNS on (fine here — no
-  # k3s etcd constraint like the cluster nodes). tailscaled is started
-  # explicitly so `runcmd` can't race the daemon at first boot.
+  # k3s etcd constraint like the cluster nodes).
   user_data = <<-EOT
     #cloud-config
     package_update: true
     packages:
       - tailscale
     runcmd:
-      - systemctl enable --now tailscaled
       - >-
         tailscale up
         --auth-key=${data.onepassword_item.tailscale_auth_key.credential}
