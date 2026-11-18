@@ -37,14 +37,16 @@ resource "hcloud_server" "hermes" {
   }
 
   # cloud-init: install tailscale and enrol in the tailnet on first boot.
+  # Via install.sh, NOT the distro package: on Ubuntu 26.04 that is the
+  # confined snap, whose tailscaled cannot run Tailscale SSH as root
+  # ("operation not permitted").
   # --ssh = Tailscale SSH; --accept-dns=true = MagicDNS on (fine here — no
   # k3s etcd constraint like the cluster nodes).
   user_data = <<-EOT
     #cloud-config
     package_update: true
-    packages:
-      - tailscale
     runcmd:
+      - curl -fsSL https://tailscale.com/install.sh | sh
       - >-
         tailscale up
         --auth-key=${data.onepassword_item.tailscale_auth_key.credential}
